@@ -1,0 +1,40 @@
+name: "Policy & Manifest Validation"
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  validate-policies-and-manifests:
+    name: "Validate Rego Policies & K8s Manifests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Open Policy Agent (OPA)"
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: v0.68.0
+
+      - name: "Run OPA Rego Unit Tests"
+        run: |
+          echo "Running Gatekeeper Rego unit test suite..."
+          opa test policies/gatekeeper/src policies/gatekeeper/tests/rego -v
+
+      - name: "Validate Admission Test Manifests with OPA"
+        run: |
+          python3 policies/gatekeeper/tests/validate_admission_manifests.py
+
+      - name: "Setup Kubeconform"
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: "Validate Kubernetes Manifests"
+        run: |
+          echo "Validating application and simulation Kubernetes manifests..."
+          kubeconform -summary -strict -kubernetes-version 1.30.0 app/k8s/*.yaml simulations/manifests/*.yaml

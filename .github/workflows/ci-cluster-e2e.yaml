@@ -1,0 +1,52 @@
+name: "End-to-End Cluster Security Validation"
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  e2e-cluster-validation:
+    name: "KIND Cluster Security E2E Pipeline"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Setup Open Policy Agent (OPA)"
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: v0.68.0
+
+      - name: "Install Helm"
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: "Setup KIND Cluster with eBPF Mounts"
+        run: |
+          bash scripts/setup-cluster.sh
+
+      - name: "Install Security Stack (Gatekeeper & Tetragon)"
+        run: |
+          bash scripts/install-security-stack.sh
+
+      - name: "Deploy Hardened Application"
+        run: |
+          bash scripts/deploy-app.sh
+
+      - name: "Execute Master Security Test Harness"
+        run: |
+          bash scripts/run-security-validation.sh
+
+      - name: "Upload Evidence & Security Scorecard"
+        uses: actions/upload-artifact@v4
+        with:
+          name: threatguard-security-evidence
+          path: artifacts/
+          retention-days: 14
