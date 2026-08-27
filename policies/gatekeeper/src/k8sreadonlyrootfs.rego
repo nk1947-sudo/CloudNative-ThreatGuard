@@ -1,0 +1,26 @@
+package k8sreadonlyrootfs
+
+find_containers[c] {
+    c := input.review.object.spec.containers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.initContainers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.ephemeralContainers[_]
+}
+
+is_exempt(container, exempt_list) {
+    exempt_list[_] == container.name
+}
+
+has_readonly_rootfs(container) {
+    container.securityContext.readOnlyRootFilesystem == true
+}
+
+violation[{"msg": msg}] {
+    container := find_containers[_]
+    not is_exempt(container, object.get(input.parameters, "exemptContainers", []))
+    not has_readonly_rootfs(container)
+    msg := sprintf("Container '%v' in pod '%v' violates policy [SEC-ADM-008]: readOnlyRootFilesystem must be true to prevent post-exploitation persistence, binary overwriting, and malware downloads on the root filesystem.", [container.name, input.review.object.metadata.name])
+}

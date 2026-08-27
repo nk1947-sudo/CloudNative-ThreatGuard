@@ -1,0 +1,24 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sSeccompProfile
+metadata:
+  name: require-seccomp-profile
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: admission-control
+    security.threatguard.io/tier: prevention
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - tetragon
+      - kube-public
+      - kube-node-lease
+  parameters:
+    allowedProfiles:
+      - "RuntimeDefault"
+      - "Localhost"

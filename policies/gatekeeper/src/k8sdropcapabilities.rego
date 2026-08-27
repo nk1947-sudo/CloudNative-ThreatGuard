@@ -1,0 +1,57 @@
+package k8sdropcapabilities
+
+default_prohibited := [
+    "SYS_ADMIN",
+    "NET_ADMIN",
+    "SYS_PTRACE",
+    "SYS_MODULE",
+    "DAC_OVERRIDE",
+    "SYS_RAWIO",
+    "SYS_CHROOT",
+    "ALL"
+]
+
+find_containers[c] {
+    c := input.review.object.spec.containers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.initContainers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.ephemeralContainers[_]
+}
+
+has_drop_all(container) {
+    dropped := container.securityContext.capabilities.drop[_]
+    upper(dropped) == "ALL"
+}
+
+has_prohibited_capability(container, prohibited) {
+    added := container.securityContext.capabilities.add[_]
+    norm_added := replace(upper(added), "CAP_", "")
+    prohibited_cap := prohibited[_]
+    norm_prohibited := replace(upper(prohibited_cap), "CAP_", "")
+    norm_added == norm_prohibited
+}
+
+get_prohibited_list = list {
+    configured := object.get(input.parameters, "prohibitedCapabilities", [])
+    count(configured) > 0
+    list := configured
+} else = list {
+    list := default_prohibited
+}
+
+violation[{"msg": msg}] {
+    container := find_containers[_]
+    not has_drop_all(container)
+    msg := sprintf("Container '%v' in pod '%v' violates policy [SEC-ADM-006]: securityContext.capabilities.drop must explicitly include 'ALL' to enforce least-privilege Linux capabilities.", [container.name, input.review.object.metadata.name])
+}
+
+violation[{"msg": msg}] {
+    container := find_containers[_]
+    prohibited := get_prohibited_list
+    has_prohibited_capability(container, prohibited)
+    added := container.securityContext.capabilities.add[_]
+    msg := sprintf("Container '%v' in pod '%v' violates policy [SEC-ADM-006]: added capability '%v' is prohibited due to high risk of container escape or kernel exploit.", [container.name, input.review.object.metadata.name, added])
+}

@@ -1,0 +1,26 @@
+package k8sprivilegeescalation
+
+find_containers[c] {
+    c := input.review.object.spec.containers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.initContainers[_]
+}
+find_containers[c] {
+    c := input.review.object.spec.ephemeralContainers[_]
+}
+
+is_exempt(container, exempt_list) {
+    exempt_list[_] == container.name
+}
+
+has_allow_priv_escalation_false(container) {
+    container.securityContext.allowPrivilegeEscalation == false
+}
+
+violation[{"msg": msg}] {
+    container := find_containers[_]
+    not is_exempt(container, object.get(input.parameters, "exemptContainers", []))
+    not has_allow_priv_escalation_false(container)
+    msg := sprintf("Container '%v' in pod '%v' violates policy [SEC-ADM-005]: allowPrivilegeEscalation must be false to prevent setuid binaries from gaining additional process privileges.", [container.name, input.review.object.metadata.name])
+}

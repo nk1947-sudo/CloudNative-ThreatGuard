@@ -1,0 +1,30 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sDropCapabilities
+metadata:
+  name: require-drop-capabilities
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: admission-control
+    security.threatguard.io/tier: prevention
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - tetragon
+      - kube-public
+      - kube-node-lease
+  parameters:
+    prohibitedCapabilities:
+      - "SYS_ADMIN"
+      - "NET_ADMIN"
+      - "SYS_PTRACE"
+      - "SYS_MODULE"
+      - "DAC_OVERRIDE"
+      - "SYS_RAWIO"
+      - "SYS_CHROOT"
+      - "ALL"

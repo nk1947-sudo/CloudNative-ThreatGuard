@@ -1,0 +1,80 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8snonrootuser
+  annotations:
+    description: "Requires workloads and containers to run as non-root user."
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sNonRootUser
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptContainers:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8snonrootuser
+
+        find_containers[c] {
+            c := input.review.object.spec.containers[_]
+        }
+        find_containers[c] {
+            c := input.review.object.spec.initContainers[_]
+        }
+        find_containers[c] {
+            c := input.review.object.spec.ephemeralContainers[_]
+        }
+
+        is_exempt(container, exempt_list) {
+            exempt_list[_] == container.name
+        }
+
+        has_pod_non_root(pod) {
+            pod.spec.securityContext.runAsNonRoot == true
+        }
+
+        has_pod_non_root(pod) {
+            pod.spec.securityContext.runAsUser > 0
+        }
+
+        has_container_non_root(container) {
+            container.securityContext.runAsNonRoot == true
+        }
+
+        has_container_non_root(container) {
+            container.securityContext.runAsUser > 0
+        }
+
+        is_explicitly_root(container, pod) {
+            container.securityContext.runAsUser == 0
+        }
+
+        is_explicitly_root(container, pod) {
+            not container.securityContext.runAsUser
+            pod.spec.securityContext.runAsUser == 0
+        }
+
+        is_non_root(container, pod) {
+            not is_explicitly_root(container, pod)
+            has_container_non_root(container)
+        }
+
+        is_non_root(container, pod) {
+            not is_explicitly_root(container, pod)
+            not container.securityContext.runAsNonRoot == false
+            has_pod_non_root(pod)
+        }
+
+        violation[{"msg": msg}] {
+            container := find_containers[_]
+            not is_exempt(container, object.get(input.parameters, "exemptContainers", []))
+            not is_non_root(container, input.review.object)
+            msg := sprintf("Container '%v' in pod '%v' violates policy [SEC-ADM-004]: runAsNonRoot must be true (or runAsUser > 0) to prevent running as UID 0 (root).", [container.name, input.review.object.metadata.name])
+        }
