@@ -1,0 +1,22 @@
+groups:
+  - name: threatguard_alerts
+    rules:
+      - alert: ThreatGuardCriticalRuntimeDetection
+        expr: threatguard_runtime_detections_total{severity="CRITICAL"} > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: runtime-ebpf
+        annotations:
+          summary: "Critical eBPF runtime security threat detected in pod {{ $labels.pod }}"
+          description: "Tetragon detected {{ $labels.rule_id }} (MITRE {{ $labels.technique }}) in container {{ $labels.container }}."
+
+      - alert: ThreatGuardAdmissionEnforcementDrop
+        expr: threatguard_admission_enforcement_rate < 100
+        for: 5m
+        labels:
+          severity: high
+          component: admission-control
+        annotations:
+          summary: "Admission control enforcement rate dropped below 100%"
+          description: "One or more insecure workloads bypassed or failed admission denial."
