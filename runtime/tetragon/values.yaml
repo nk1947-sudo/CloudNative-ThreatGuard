@@ -1,0 +1,32 @@
+# Tetragon Helm Values Configuration for CloudNative ThreatGuard
+tetragon:
+  enabled: true
+  exportDirectory: "/var/run/cilium/tetragon"
+  exportFilename: "tetragon.log"
+  exportFileMaxSizeMB: 50
+  exportFileMaxBackups: 3
+  exportFileCompress: false
+  
+  # Export JSON events format
+  exportFilePerm: "0640"
+  
+  # Metrics for Prometheus scraping
+  prometheus:
+    enabled: true
+    port: 2112
+    address: "0.0.0.0"
+  
+  # Host BPF filesystem
+  bpf:
+    mapDirectory: "/sys/fs/bpf"
+  
+  # Default filtering & process tracing
+  processCacheSize: 65536
+  
+  # Contextual filtering to protect against noisy cluster-wide logs
+  fieldFilters:
+    - field: "node_name"
+    - field: "time"
+    - field: "process_exec"
+    - field: "process_exit"
+    - field: "process_kprobe"

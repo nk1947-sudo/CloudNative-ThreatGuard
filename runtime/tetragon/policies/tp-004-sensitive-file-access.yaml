@@ -1,0 +1,32 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tp-004-sensitive-file-access
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: runtime-ebpf
+    security.threatguard.io/rule: RUNTIME-004
+    security.threatguard.io/mitre: T1552.007
+spec:
+  kprobes:
+    - call: "security_file_open"
+      syscall: false
+      args:
+        - index: 0
+          type: "file" # Target file
+        - index: 1
+          type: "int"  # Flags
+      selectors:
+        - matchNamespaces:
+            - "threatguard"
+          matchArgs:
+            - index: 0
+              operator: "Prefix"
+              values:
+                - "/var/run/secrets/kubernetes.io/serviceaccount/token"
+                - "/etc/shadow"
+                - "/etc/gshadow"
+                - "/root/.ssh"
+          matchActions:
+            - action: Post
+              rateLimit: "10m"

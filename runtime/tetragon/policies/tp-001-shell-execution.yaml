@@ -1,0 +1,37 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tp-001-shell-execution
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: runtime-ebpf
+    security.threatguard.io/rule: RUNTIME-001
+    security.threatguard.io/mitre: T1059.004
+spec:
+  kprobes:
+    - call: "sys_enter_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string" # Binary path
+        - index: 1
+          type: "string" # Arguments
+      selectors:
+        - matchNamespaces:
+            - "threatguard"
+          matchArgs:
+            - index: 0
+              operator: "In"
+              values:
+                - "/bin/sh"
+                - "/bin/bash"
+                - "/bin/dash"
+                - "/bin/zsh"
+                - "/usr/bin/sh"
+                - "/usr/bin/bash"
+                - "/usr/bin/dash"
+                - "/usr/bin/zsh"
+          matchActions:
+            - action: Sigkill
+            - action: Post
+              rateLimit: "10m"

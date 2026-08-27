@@ -1,0 +1,38 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tp-002-suspicious-network-tools
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: runtime-ebpf
+    security.threatguard.io/rule: RUNTIME-002
+    security.threatguard.io/mitre: T1105
+spec:
+  kprobes:
+    - call: "sys_enter_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string" # Binary path
+        - index: 1
+          type: "string" # Arguments
+      selectors:
+        - matchNamespaces:
+            - "threatguard"
+          matchArgs:
+            - index: 0
+              operator: "In"
+              values:
+                - "/usr/bin/curl"
+                - "/bin/curl"
+                - "/usr/bin/wget"
+                - "/bin/wget"
+                - "/usr/bin/nc"
+                - "/bin/nc"
+                - "/usr/bin/netcat"
+                - "/bin/netcat"
+                - "/usr/bin/nmap"
+                - "/usr/bin/socat"
+          matchActions:
+            - action: Post
+              rateLimit: "10m"

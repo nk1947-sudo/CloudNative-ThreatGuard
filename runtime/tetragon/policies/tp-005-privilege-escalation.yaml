@@ -1,0 +1,36 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tp-005-privilege-escalation
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: runtime-ebpf
+    security.threatguard.io/rule: RUNTIME-005
+    security.threatguard.io/mitre: T1068
+spec:
+  kprobes:
+    - call: "sys_enter_execve"
+      syscall: true
+      args:
+        - index: 0
+          type: "string" # Binary path
+        - index: 1
+          type: "string" # Arguments
+      selectors:
+        - matchNamespaces:
+            - "threatguard"
+          matchArgs:
+            - index: 0
+              operator: "In"
+              values:
+                - "/usr/bin/nsenter"
+                - "/bin/nsenter"
+                - "/usr/bin/unshare"
+                - "/bin/unshare"
+                - "/sbin/capsh"
+                - "/usr/sbin/capsh"
+                - "/usr/bin/chroot"
+                - "/bin/chroot"
+          matchActions:
+            - action: Post
+              rateLimit: "10m"
