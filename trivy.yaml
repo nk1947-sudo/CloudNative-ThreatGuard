@@ -1,0 +1,14 @@
+# Trivy configuration for CloudNative ThreatGuard
+severity:
+  - HIGH
+  - CRITICAL
+exit-code: 0
+format: table
+timeout: 5m
+scan:
+  scanners:
+    - vuln
+    - secret
+    - config
+vulnerability:
+  ignore-unfixed: true
