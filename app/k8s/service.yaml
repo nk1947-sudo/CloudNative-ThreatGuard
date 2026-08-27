@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: threatguard-app-service
+  namespace: threatguard
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    app.kubernetes.io/component: protected-workload
+spec:
+  type: ClusterIP
+  selector:
+    app: threatguard-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
