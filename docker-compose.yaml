@@ -1,0 +1,39 @@
+services:
+  exporter:
+    image: python:3.12-slim
+    container_name: threatguard-exporter
+    working_dir: /workspace
+    command: python observability/exporter/metrics_exporter.py
+    ports:
+      - "9100:9100"
+    volumes:
+      - .:/workspace:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: threatguard-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yaml:/etc/prometheus/alerts.yaml:ro
+    depends_on:
+      - exporter
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: threatguard-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
