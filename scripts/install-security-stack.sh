@@ -34,18 +34,33 @@ log_step "4. Applying Gatekeeper Constraints..."
 kubectl apply -f "${REPO_ROOT}/policies/gatekeeper/constraints/"
 log_success "Gatekeeper admission policies applied successfully."
 
+# Ensure Helm is available
+if ! command -v helm >/dev/null 2>&1; then
+    if [ -f "${HOME}/go/bin/helm.exe" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    elif [ -f "${HOME}/go/bin/helm" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    fi
+fi
+
+if ! command -v helm >/dev/null 2>&1; then
+    log_info "Helm not found, attempting auto-installation..."
+    if [[ "$(uname -s)" =~ (MINGW|MSYS) ]]; then
+        powershell.exe -NoProfile -Command "Invoke-WebRequest -Uri 'https://get.helm.sh/helm-v3.15.4-windows-amd64.zip' -OutFile '\$env:TEMP\helm.zip'; Expand-Archive -Path '\$env:TEMP\helm.zip' -DestinationPath '\$env:TEMP\helm-extracted' -Force; Move-Item -Path '\$env:TEMP\helm-extracted\windows-amd64\helm.exe' -Destination '\$env:USERPROFILE\go\bin\helm.exe' -Force; Remove-Item -Path '\$env:TEMP\helm.zip', '\$env:TEMP\helm-extracted' -Recurse -Force"
+        export PATH="${HOME}/go/bin:${PATH}"
+    elif [ "$(uname -s)" = "Linux" ]; then
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    fi
+fi
+
 log_step "5. Installing Cilium Tetragon eBPF Runtime Security (${TETRAGON_VERSION})..."
 kubectl create namespace tetragon --dry-run=client -o yaml | kubectl apply -f -
-if command -v helm >/dev/null 2>&1; then
-    helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
-    helm repo update
-    helm upgrade --install tetragon cilium/tetragon \
-        --namespace tetragon \
-        --create-namespace \
-        -f "${REPO_ROOT}/runtime/tetragon/values.yaml"
-else
-    kubectl apply -n tetragon -f "https://github.com/cilium/tetragon/releases/download/${TETRAGON_VERSION}/tetragon-quickstart.yaml"
-fi
+helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
+helm repo update
+helm upgrade --install tetragon cilium/tetragon \
+    --namespace tetragon \
+    --create-namespace \
+    -f "${REPO_ROOT}/runtime/tetragon/values.yaml"
 
 log_info "Waiting for Tetragon DaemonSet to become ready..."
 kubectl rollout status ds/tetragon -n tetragon --timeout=120s || log_warn "Tetragon rollout taking time; continuing..."

@@ -5,7 +5,7 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 COPY src/requirements.txt .
 
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Stage 2: Minimal hardened runtime image
 FROM python:3.12-slim AS runtime
@@ -16,16 +16,15 @@ RUN groupadd -g 10001 threatguard && \
 
 WORKDIR /app
 
-# Copy python packages and app code
-COPY --from=builder /root/.local /home/threatguard/.local
+# Copy python packages from builder stage into system path
+COPY --from=builder /install /usr/local
 COPY src/app.py .
 
 # Fix permissions
-RUN chown -R threatguard:threatguard /app /home/threatguard/.local
+RUN chown -R threatguard:threatguard /app
 
 # Set environment
-ENV PATH="/home/threatguard/.local/bin:${PATH}" \
-    PYTHONUNBUFFERED=1 \
+ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8080
 

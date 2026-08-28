@@ -23,7 +23,7 @@ spec:
       securityContext:
         allowPrivilegeEscalation: false
         privileged: false
-        readOnlyRootFilesystem: false
+        readOnlyRootFilesystem: true
         runAsNonRoot: true
         runAsUser: 10001
         capabilities:
@@ -31,6 +31,9 @@ spec:
             - ALL
         seccompProfile:
           type: RuntimeDefault
+      volumeMounts:
+        - name: tmp-volume
+          mountPath: /tmp
       resources:
         limits:
           cpu: 200m
@@ -38,3 +41,6 @@ spec:
         requests:
           cpu: 50m
           memory: 64Mi
+  volumes:
+    - name: tmp-volume
+      emptyDir: {}

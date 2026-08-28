@@ -8,6 +8,9 @@ metadata:
     security.threatguard.io/rule: RUNTIME-002
     security.threatguard.io/mitre: T1105
 spec:
+  podSelector:
+    matchLabels:
+      security.threatguard.io/tier: runtime-monitored
   kprobes:
     - call: "sys_enter_execve"
       syscall: true
@@ -17,11 +20,9 @@ spec:
         - index: 1
           type: "string" # Arguments
       selectors:
-        - matchNamespaces:
-            - "threatguard"
-          matchArgs:
+        - matchArgs:
             - index: 0
-              operator: "In"
+              operator: "Equal"
               values:
                 - "/usr/bin/curl"
                 - "/bin/curl"

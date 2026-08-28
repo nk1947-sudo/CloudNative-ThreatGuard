@@ -8,6 +8,9 @@ metadata:
     security.threatguard.io/rule: RUNTIME-004
     security.threatguard.io/mitre: T1552.007
 spec:
+  podSelector:
+    matchLabels:
+      security.threatguard.io/tier: runtime-monitored
   kprobes:
     - call: "security_file_open"
       syscall: false
@@ -17,9 +20,7 @@ spec:
         - index: 1
           type: "int"  # Flags
       selectors:
-        - matchNamespaces:
-            - "threatguard"
-          matchArgs:
+        - matchArgs:
             - index: 0
               operator: "Prefix"
               values:

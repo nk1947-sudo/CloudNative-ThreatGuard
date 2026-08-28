@@ -6,6 +6,9 @@
 
 set -euo pipefail
 
+export MSYS_NO_PATHCONV=1
+
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"

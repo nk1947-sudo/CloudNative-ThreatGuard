@@ -13,6 +13,14 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 log_step "Deploying hardened sample application..."
 
+if ! command -v kind >/dev/null 2>&1; then
+    if [ -f "${HOME}/go/bin/kind.exe" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    elif [ -f "${HOME}/go/bin/kind" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    fi
+fi
+
 if command -v docker >/dev/null 2>&1; then
     log_info "Building application container image..."
     docker build -t cloudnative-threatguard/sample-app:v1.0.0 "${REPO_ROOT}/app"

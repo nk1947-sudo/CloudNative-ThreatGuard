@@ -8,6 +8,9 @@ metadata:
     security.threatguard.io/rule: RUNTIME-006
     security.threatguard.io/mitre: T1071
 spec:
+  podSelector:
+    matchLabels:
+      security.threatguard.io/tier: runtime-monitored
   kprobes:
     - call: "sys_enter_connect"
       syscall: true
@@ -17,8 +20,6 @@ spec:
         - index: 1
           type: "sockaddr" # remote destination address
       selectors:
-        - matchNamespaces:
-            - "threatguard"
-          matchActions:
+        - matchActions:
             - action: Post
               rateLimit: "10m"
