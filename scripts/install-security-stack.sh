@@ -35,6 +35,7 @@ kubectl apply -f "${REPO_ROOT}/policies/gatekeeper/constraints/"
 log_success "Gatekeeper admission policies applied successfully."
 
 log_step "5. Installing Cilium Tetragon eBPF Runtime Security (${TETRAGON_VERSION})..."
+kubectl create namespace tetragon --dry-run=client -o yaml | kubectl apply -f -
 if command -v helm >/dev/null 2>&1; then
     helm repo add cilium https://helm.cilium.io/ 2>/dev/null || true
     helm repo update

@@ -25,11 +25,28 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 if ! command -v kind >/dev/null 2>&1; then
+    if [ -f "${HOME}/go/bin/kind.exe" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    elif [ -f "${HOME}/go/bin/kind" ]; then
+        export PATH="${HOME}/go/bin:${PATH}"
+    fi
+fi
+
+if ! command -v kind >/dev/null 2>&1; then
     log_info "KIND not found, attempting auto-installation..."
-    if [ "$(uname -s)" = "Linux" ]; then
+    if command -v go >/dev/null 2>&1; then
+        log_info "Installing kind via go install..."
+        go install sigs.k8s.io/kind@v0.24.0
+        export PATH="${HOME}/go/bin:${PATH}"
+    elif [ "$(uname -s)" = "Linux" ]; then
         curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
         chmod +x /tmp/kind
         sudo mv /tmp/kind /usr/local/bin/kind || mv /tmp/kind "${HOME}/.local/bin/kind" || true
+    elif [[ "$(uname -s)" =~ (MINGW|MSYS) ]]; then
+        mkdir -p "${HOME}/bin"
+        curl -Lo "${HOME}/bin/kind.exe" https://kind.sigs.k8s.io/dl/v0.24.0/kind-windows-amd64.exe
+        chmod +x "${HOME}/bin/kind.exe"
+        export PATH="${HOME}/bin:${PATH}"
     fi
 fi
 
