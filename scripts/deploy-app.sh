@@ -8,9 +8,19 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common.sh"
 
 log_step "Deploying hardened sample application..."
+
+if command -v docker >/dev/null 2>&1; then
+    log_info "Building application container image..."
+    docker build -t cloudnative-threatguard/sample-app:v1.0.0 "${REPO_ROOT}/app"
+    if command -v kind >/dev/null 2>&1 && kind get clusters 2>/dev/null | grep -q "^threatguard-cluster$"; then
+        log_info "Loading image into KIND cluster..."
+        kind load docker-image cloudnative-threatguard/sample-app:v1.0.0 --name threatguard-cluster
+    fi
+fi
 
 if ! kubectl get namespace threatguard >/dev/null 2>&1; then
     kubectl create namespace threatguard

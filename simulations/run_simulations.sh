@@ -20,9 +20,7 @@ echo " CloudNative ThreatGuard — Behavioral Attack Simulation Engine"
 echo " Target Pod: ${TARGET_POD} | Namespace: ${NAMESPACE}"
 echo "======================================================================"
 
-IS_LIVE_CLUSTER=false
 if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    IS_LIVE_CLUSTER=true
     echo "[+] Live Kubernetes target pod detected: ${TARGET_POD}"
 else
     echo "[!] Target pod not active or kubectl unavailable. Running in local trace simulation mode."
@@ -30,7 +28,7 @@ fi
 
 # Raw events capture file
 RAW_TELEMETRY="artifacts/runtime/tetragon-raw.json"
-> "${RAW_TELEMETRY}"
+: > "${RAW_TELEMETRY}"
 
 echo ""
 echo "[1/6] Executing SCEN-001 (Interactive Shell Execution)..."
@@ -104,5 +102,5 @@ for rule, count in summary[\"by_rule\"].items():
 "
 
 echo ""
-echo "[+] Runtime detections saved to: ${ARTIFACTS_RUNTIME}/runtime-events.json"
+echo "[+] Runtime detections saved to: artifacts/runtime/runtime-events.json"
 echo "[+] Attack simulation completed successfully."

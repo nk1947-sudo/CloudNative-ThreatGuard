@@ -7,7 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common.sh"
 
 CLUSTER_NAME="threatguard-cluster"
@@ -22,6 +22,15 @@ fi
 if ! docker info >/dev/null 2>&1; then
     log_error "Docker daemon is not running. Please start Docker Desktop or the dockerd daemon."
     exit 1
+fi
+
+if ! command -v kind >/dev/null 2>&1; then
+    log_info "KIND not found, attempting auto-installation..."
+    if [ "$(uname -s)" = "Linux" ]; then
+        curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+        chmod +x /tmp/kind
+        sudo mv /tmp/kind /usr/local/bin/kind || mv /tmp/kind "${HOME}/.local/bin/kind" || true
+    fi
 fi
 
 if ! command -v kind >/dev/null 2>&1; then

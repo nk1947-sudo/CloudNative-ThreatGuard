@@ -8,6 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common.sh"
 
 ARTIFACTS_ADM="${REPO_ROOT}/artifacts/admission"
@@ -29,7 +30,7 @@ if [ "$IS_LIVE_GATEKEEPER" = true ]; then
     BLOCKED=0
     ALLOWED=0
     
-    > "${ARTIFACTS_ADM}/rejections.log"
+    : > "${ARTIFACTS_ADM}/rejections.log"
     
     for manifest in "${REPO_ROOT}"/policies/gatekeeper/tests/manifests/negative/*.yaml; do
         bname=$(basename "${manifest}")
