@@ -56,11 +56,26 @@ if ! command -v kind >/dev/null 2>&1; then
 fi
 
 if ! command -v kubectl >/dev/null 2>&1; then
+    log_info "kubectl not found, attempting auto-installation..."
+    if [ "$(uname -s)" = "Linux" ]; then
+        curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/kubectl || mv kubectl "${HOME}/.local/bin/kubectl" || true
+    fi
+fi
+
+if ! command -v kubectl >/dev/null 2>&1; then
     log_error "kubectl is required. Please install kubectl."
     exit 1
 fi
 
 log_step "Verifying or creating KIND cluster: ${CLUSTER_NAME}..."
+
+if [ "$(uname -s)" = "Linux" ]; then
+    sudo mkdir -p /sys/kernel/debug /sys/fs/bpf
+    sudo mount -t debugfs none /sys/kernel/debug 2>/dev/null || true
+    sudo mount -t bpf none /sys/fs/bpf 2>/dev/null || true
+fi
 
 if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     log_info "KIND cluster '${CLUSTER_NAME}' already exists."

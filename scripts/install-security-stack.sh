@@ -22,7 +22,7 @@ log_step "2. Installing OPA Gatekeeper (${GATEKEEPER_VERSION})..."
 kubectl apply -f "https://raw.githubusercontent.com/open-policy-agent/gatekeeper/${GATEKEEPER_VERSION}/deploy/gatekeeper.yaml"
 
 log_info "Waiting for Gatekeeper controller to become ready..."
-kubectl rollout status deployment/gatekeeper-controller-manager -n gatekeeper-system --timeout=120s
+kubectl rollout status deployment/gatekeeper-controller-manager -n gatekeeper-system --timeout=180s
 
 log_step "3. Applying Gatekeeper ConstraintTemplates..."
 kubectl apply -f "${REPO_ROOT}/policies/gatekeeper/templates/"

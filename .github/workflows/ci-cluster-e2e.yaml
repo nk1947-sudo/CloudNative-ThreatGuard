@@ -26,7 +26,12 @@ jobs:
       - name: "Install Helm"
         uses: azure/setup-helm@v4
         with:
-          version: v3.14.0
+          version: v3.15.4
+
+      - name: "Install Kubectl"
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
 
       - name: "Install KIND"
         run: |
