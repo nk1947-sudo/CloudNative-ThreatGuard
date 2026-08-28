@@ -16,9 +16,7 @@ spec:
       syscall: false
       args:
         - index: 0
-          type: "file" # Target file
-        - index: 1
-          type: "int"  # Flags
+          type: "file" # Target file struct
       selectors:
         - matchArgs:
             - index: 0

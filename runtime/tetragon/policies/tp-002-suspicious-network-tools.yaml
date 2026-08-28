@@ -12,13 +12,11 @@ spec:
     matchLabels:
       security.threatguard.io/tier: runtime-monitored
   kprobes:
-    - call: "sys_enter_execve"
+    - call: "sys_execve"
       syscall: true
       args:
         - index: 0
           type: "string" # Binary path
-        - index: 1
-          type: "string" # Arguments
       selectors:
         - matchArgs:
             - index: 0

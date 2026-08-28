@@ -5,6 +5,7 @@
 # Severity: MEDIUM
 
 set -euo pipefail
+export MSYS_NO_PATHCONV=1
 
 TARGET_POD="${1:-threatguard-target-pod}"
 NAMESPACE="${2:-threatguard}"

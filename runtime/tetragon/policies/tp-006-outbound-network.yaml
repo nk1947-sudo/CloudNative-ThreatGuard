@@ -12,7 +12,7 @@ spec:
     matchLabels:
       security.threatguard.io/tier: runtime-monitored
   kprobes:
-    - call: "sys_enter_connect"
+    - call: "sys_connect"
       syscall: true
       args:
         - index: 0
