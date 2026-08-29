@@ -54,16 +54,23 @@ class ThreatGuardCorrelationEngine:
         return None
 
     def _handle_process_exec(self, exec_event: Dict[str, Any], event_time: str) -> Optional[ThreatGuardDetection]:
-        proc = exec_event.get("process", {})
-        binary = proc.get("binary", "")
-        args = proc.get("arguments", "")
-        pod = proc.get("pod", {})
-        namespace = pod.get("namespace", "")
-        pod_name = pod.get("name", "")
-        container = pod.get("container", {}).get("name", "")
+        if not isinstance(exec_event, dict):
+            return None
+        proc = exec_event.get("process") or {}
+        if not isinstance(proc, dict):
+            return None
+        binary = proc.get("binary") or ""
+        args = proc.get("arguments") or ""
+        pod = proc.get("pod") or {}
+        if not isinstance(pod, dict):
+            return None
+        namespace = pod.get("namespace") or ""
+        pod_name = pod.get("name") or ""
+        container_obj = pod.get("container") or {}
+        container = container_obj.get("name", "") if isinstance(container_obj, dict) else ""
 
         # Target contextual filtering: filter for protected namespace if specified
-        if namespace and namespace != self.protected_namespace:
+        if self.protected_namespace and namespace != self.protected_namespace:
             return None
 
         basename = os.path.basename(binary).lower()
@@ -167,15 +174,24 @@ class ThreatGuardCorrelationEngine:
         return None
 
     def _handle_kprobe(self, kprobe_event: Dict[str, Any], event_time: str) -> Optional[ThreatGuardDetection]:
-        func_name = kprobe_event.get("function_name", "")
-        proc = kprobe_event.get("process", {})
-        pod = proc.get("pod", {})
-        namespace = pod.get("namespace", "")
-        pod_name = pod.get("name", "")
-        container = pod.get("container", {}).get("name", "")
-        args_list = kprobe_event.get("args", [])
+        if not isinstance(kprobe_event, dict):
+            return None
+        func_name = kprobe_event.get("function_name") or ""
+        proc = kprobe_event.get("process") or {}
+        if not isinstance(proc, dict):
+            return None
+        pod = proc.get("pod") or {}
+        if not isinstance(pod, dict):
+            return None
+        namespace = pod.get("namespace") or ""
+        pod_name = pod.get("name") or ""
+        container_obj = pod.get("container") or {}
+        container = container_obj.get("name", "") if isinstance(container_obj, dict) else ""
+        args_list = kprobe_event.get("args") or []
+        if not isinstance(args_list, list):
+            args_list = []
 
-        if namespace and namespace != self.protected_namespace:
+        if self.protected_namespace and namespace != self.protected_namespace:
             return None
 
         # RUNTIME-004: Sensitive file access via security_file_open or openat
