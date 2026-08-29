@@ -53,6 +53,9 @@ class SecurityEvent:
     detection_rule: str = ""
     mitre_technique: str = ""
     mitre_tactic: str = ""
+    file_path: str = ""
+    destination_ip: str = ""
+    destination_port: int = 0
     description: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
 
