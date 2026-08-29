@@ -6,7 +6,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help setup cluster install-security deploy test test-admission test-runtime simulate metrics evidence security-test dashboard clean
+.PHONY: help setup cluster install-security deploy test test-admission test-runtime simulate metrics evidence security-test dashboard verify clean
 
 help: ## Display this help message
 	@echo "======================================================================"
@@ -62,6 +62,9 @@ security-test: ## Run the complete 11-step end-to-end security test harness
 
 dashboard: ## Run the Prometheus telemetry exporter on port 9100
 	@python observability/exporter/metrics_exporter.py
+
+verify: ## Run comprehensive end-to-end platform verification (all components)
+	@python verify-all.py
 
 clean: ## Clean up local artifacts and temporary files
 	@rm -rf artifacts/admission/*.log artifacts/runtime/*.json artifacts/metrics/*.prom artifacts/reports/*.json
