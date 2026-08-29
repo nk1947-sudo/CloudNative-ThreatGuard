@@ -9,6 +9,7 @@ from .risk_engine import RiskScoringEngine, RiskAssessment, RiskContributor
 from .incident_engine import IncidentManager, IncidentStatus
 from .attack_chain import AttackChainVisualizer
 from .investigation_engine import WorkloadInvestigator, WorkloadSecurityPosture
+from .recommendations import ResponseRecommendationEngine, ResponseRecommendation, ActionCategory, RecommendationPriority
 from .mitre_mapping import MITRE_CONTAINER_MATRIX, get_technique_details
 
 __all__ = [
@@ -29,6 +30,10 @@ __all__ = [
     "AttackChainVisualizer",
     "WorkloadInvestigator",
     "WorkloadSecurityPosture",
+    "ResponseRecommendationEngine",
+    "ResponseRecommendation",
+    "ActionCategory",
+    "RecommendationPriority",
     "MITRE_CONTAINER_MATRIX",
     "get_technique_details"
 ]

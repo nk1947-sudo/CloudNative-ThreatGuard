@@ -234,48 +234,15 @@ class IncidentManager:
         """
         Generates non-destructive, actionable remediation guidance with dry-run kubectl commands.
         """
-        recs = []
-
-        # T1059.004 (Execution) or T1496 (Cryptomining)
-        if "T1059.004" in techniques or "T1496" in techniques:
-            recs.append({
-                "action": "ISOLATE_WORKLOAD",
-                "title": f"Isolate Compromised Pod {pod_name} via NetworkPolicy",
-                "description": "Apply a zero-trust default-deny NetworkPolicy to quarantine the workload from cluster services.",
-                "kubectl_command": f"kubectl apply -f - <<EOF\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: quarantine-{pod_name}\n  namespace: {namespace}\nspec:\n  podSelector:\n    matchLabels:\n      app: {pod_name}\n  policyTypes:\n  - Ingress\n  - Egress\nEOF",
-                "priority": "HIGH"
-            })
-
-        # T1552.007 (Credential Access - SA Token)
-        if "T1552.007" in techniques:
-            recs.append({
-                "action": "ROTATE_CREDENTIALS",
-                "title": "Revoke & Rotate Exposed ServiceAccount Tokens",
-                "description": "Immediately invalidate the exposed ServiceAccount token secret and disable automountServiceAccountToken.",
-                "kubectl_command": f"kubectl patch deployment {pod_name} -n {namespace} -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"automountServiceAccountToken\":false}}}}}}}}'",
-                "priority": "CRITICAL"
-            })
-
-        # T1071 / T1105 / T1210 (C2 / Ingress / Lateral Movement)
-        if any(t in techniques for t in ["T1071", "T1105", "T1210"]):
-            recs.append({
-                "action": "RESTRICT_EGRESS",
-                "title": "Block Unauthorized External and Internal Egress",
-                "description": "Restrict DNS and egress traffic for the workload namespace to trusted CIDRs only.",
-                "kubectl_command": f"kubectl get pods -n {namespace} -l app={pod_name} -o yaml",
-                "priority": "HIGH"
-            })
-
-        # General containment
-        recs.append({
-            "action": "FORENSIC_CAPTURE_AND_DELETE",
-            "title": f"Capture Pod Logs and Terminate {pod_name}",
-            "description": "Collect process and container logs before cordoning and deleting the compromised pod instance.",
-            "kubectl_command": f"kubectl logs -n {namespace} {pod_name} > /tmp/{pod_name}-forensics.log && kubectl delete pod -n {namespace} {pod_name} --now",
-            "priority": "MEDIUM"
-        })
-
-        return recs
+        from .recommendations import ResponseRecommendationEngine
+        rec_engine = ResponseRecommendationEngine()
+        recs = rec_engine.generate_recommendations(
+            namespace=namespace,
+            pod_name=pod_name,
+            techniques=techniques,
+            severity="CRITICAL" if any(t == "T1552.007" for t in techniques) else "HIGH"
+        )
+        return [r.to_dict() for r in recs]
 
     def _record_audit(self, action: str, resource_id: str, details: str):
         self.audit_log.append({
