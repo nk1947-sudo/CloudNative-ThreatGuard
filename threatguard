@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ThreatGuard Operator CLI launcher
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python3 "${SCRIPT_DIR}/threatguard.py" "$@" || python "${SCRIPT_DIR}/threatguard.py" "$@"
