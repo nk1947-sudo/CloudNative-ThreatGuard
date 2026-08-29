@@ -233,3 +233,7 @@ def list_tactics() -> List[str]:
         if m.tactic not in tactics:
             tactics.append(m.tactic)
     return tactics
+
+
+get_technique_details = get_mitre_mapping
+
