@@ -7,6 +7,7 @@ from .rules import DETECTION_RULES, DetectionRule, RuleRegistry
 from .correlation_engine import ThreatGuardCorrelationEngine
 from .risk_engine import RiskScoringEngine, RiskAssessment, RiskContributor
 from .incident_engine import IncidentManager, IncidentStatus
+from .attack_chain import AttackChainVisualizer
 from .mitre_mapping import MITRE_CONTAINER_MATRIX, get_technique_details
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "RiskContributor",
     "IncidentManager",
     "IncidentStatus",
+    "AttackChainVisualizer",
     "MITRE_CONTAINER_MATRIX",
     "get_technique_details"
 ]

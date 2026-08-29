@@ -116,6 +116,23 @@ class IncidentManager:
     def get_incident(self, incident_id: str) -> Optional[Dict[str, Any]]:
         return self.incidents.get(incident_id)
 
+    def get_incident_visualizations(self, incident_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Returns JSON graph, Mermaid diagram, ASCII tree, and HTML snippet for an incident.
+        """
+        inc = self.get_incident(incident_id)
+        if not inc:
+            return None
+        from .attack_chain import AttackChainVisualizer
+        viz = AttackChainVisualizer(inc)
+        return {
+            "incident_id": incident_id,
+            "json_graph": viz.to_json(),
+            "mermaid": viz.to_mermaid(),
+            "ascii": viz.to_ascii(),
+            "html": viz.to_html_snippet()
+        }
+
     def list_incidents(
         self,
         status: Optional[str] = None,
