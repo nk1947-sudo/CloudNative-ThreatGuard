@@ -9,7 +9,7 @@ import os
 import sys
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
-from .models import ThreatGuardDetection
+from .models import ThreatGuardDetection, SecurityEvent, SecurityIncident
 from .rules import DETECTION_RULES
 
 class ThreatGuardCorrelationEngine:
@@ -19,11 +19,21 @@ class ThreatGuardCorrelationEngine:
         self.detections: List[ThreatGuardDetection] = []
         self.total_events_processed: int = 0
 
-    def process_raw_tetragon_event(self, raw_event: Dict[str, Any]) -> Optional[ThreatGuardDetection]:
+    def process_raw_tetragon_event(self, raw_event: Dict[str, Any], record: bool = True) -> Optional[ThreatGuardDetection]:
         """
         Evaluates a single raw Tetragon event against detection rules.
         """
         self.total_events_processed += 1
+        det = self._evaluate_raw_event(raw_event)
+        if det and record:
+            self.detections.append(det)
+        return det
+
+    def process_event(self, raw_event: Dict[str, Any], record: bool = True) -> Optional[ThreatGuardDetection]:
+        """Convenience alias for process_raw_tetragon_event."""
+        return self.process_raw_tetragon_event(raw_event, record=record)
+
+    def _evaluate_raw_event(self, raw_event: Dict[str, Any]) -> Optional[ThreatGuardDetection]:
 
         # Tetragon events usually wrap process_exec, process_kprobe, etc.
         event_time = raw_event.get("time", datetime.now(timezone.utc).isoformat())
@@ -274,7 +284,7 @@ class ThreatGuardCorrelationEngine:
                     continue
                 try:
                     event = json.loads(line)
-                    det = self.process_raw_tetragon_event(event)
+                    det = self.process_raw_tetragon_event(event, record=False)
                     if det:
                         self.detections.append(det)
                         new_detections.append(det)
@@ -302,3 +312,87 @@ class ThreatGuardCorrelationEngine:
             "by_rule": by_rule,
             "by_technique": by_technique
         }
+
+    def correlate_incidents(
+        self,
+        events: Optional[List[SecurityEvent]] = None,
+        window_seconds: int = 300
+    ) -> List[SecurityIncident]:
+        """
+        Groups sequential security events by pod/workload into high-level attack chain incidents.
+        Generates unique '#TG-xxxxxx' incident identifiers with combined tactics, techniques,
+        and maximum severity.
+        """
+        target_events: List[SecurityEvent] = []
+        if events is not None:
+            target_events = events
+        else:
+            target_events = [d.to_security_event() for d in self.detections]
+
+        if not target_events:
+            return []
+
+        # Group events by workload key: (namespace, pod)
+        grouped: Dict[str, List[SecurityEvent]] = {}
+        for ev in target_events:
+            key = f"{ev.namespace}/{ev.pod}" if ev.pod else ev.namespace
+            grouped.setdefault(key, []).append(ev)
+
+        incidents: List[SecurityIncident] = []
+        for key, ev_list in grouped.items():
+            if not ev_list:
+                continue
+
+            # Sort events by timestamp
+            ev_list.sort(key=lambda x: x.timestamp)
+
+            # Determine aggregate severity (CRITICAL > HIGH > MEDIUM > LOW > INFO)
+            severity_order = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+            highest_sev = "LOW"
+            for e in ev_list:
+                if e.severity in severity_order:
+                    if severity_order.index(e.severity) > severity_order.index(highest_sev):
+                        highest_sev = e.severity
+
+            # Collect unique tactics and techniques preserving order
+            tactics = []
+            techniques = []
+            for e in ev_list:
+                if e.mitre_tactic and e.mitre_tactic not in tactics:
+                    tactics.append(e.mitre_tactic)
+                if e.mitre_technique and e.mitre_technique not in techniques:
+                    techniques.append(e.mitre_technique)
+
+            primary_ev = ev_list[0]
+            pod_name = primary_ev.pod or key.split("/")[-1]
+            ns_name = primary_ev.namespace or "threatguard"
+
+            # Formulate incident title and summary
+            if len(tactics) > 1:
+                title = f"Multi-Stage Attack Chain Detected on {pod_name}"
+                summary = (
+                    f"Correlated {len(ev_list)} security events across {len(tactics)} MITRE tactics "
+                    f"({', '.join(tactics)}) in workload {pod_name}."
+                )
+            else:
+                title = f"Security Violation Burst: {ev_list[0].description or 'Anomalous Behavior'}"
+                summary = f"Detected {len(ev_list)} security events matching {', '.join(techniques)} on {pod_name}."
+
+            inc = SecurityIncident(
+                cluster=primary_ev.cluster,
+                namespace=ns_name,
+                pod=pod_name,
+                container=primary_ev.container,
+                severity=highest_sev,
+                confidence=max(e.confidence for e in ev_list),
+                title=title,
+                summary=summary,
+                tactics=tactics,
+                techniques=techniques,
+                events=ev_list,
+                status="OPEN"
+            )
+            incidents.append(inc)
+
+        return incidents
+

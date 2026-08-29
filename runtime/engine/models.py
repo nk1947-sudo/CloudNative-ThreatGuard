@@ -273,3 +273,72 @@ class ThreatGuardDetection(SecurityEvent):
     @command.setter
     def command(self, val: str):
         self.metadata["command"] = val
+
+    def to_security_event(self) -> SecurityEvent:
+        """Return as pure SecurityEvent base dataclass."""
+        return SecurityEvent(
+            event_id=self.event_id,
+            timestamp=self.timestamp,
+            event_type=self.event_type,
+            source=self.source,
+            cluster=self.cluster,
+            namespace=self.namespace,
+            pod=self.pod,
+            container=self.container,
+            node=self.node,
+            process=self.process,
+            parent_process=self.parent_process,
+            executable=self.executable,
+            action=self.action,
+            severity=self.severity,
+            confidence=self.confidence,
+            detection_rule=self.detection_rule,
+            mitre_technique=self.mitre_technique,
+            mitre_tactic=self.mitre_tactic,
+            description=self.description,
+            metadata=dict(self.metadata)
+        )
+
+
+@dataclass
+class SecurityIncident:
+    """
+    Correlated multi-stage security incident representing an attack chain
+    on a workload or cluster boundary.
+    """
+    incident_id: str = field(default_factory=lambda: f"#TG-{uuid.uuid4().hex[:6].upper()}")
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    cluster: str = "threatguard-local"
+    namespace: str = "threatguard"
+    pod: str = ""
+    container: str = ""
+    severity: str = Severity.HIGH.value
+    confidence: float = 0.90
+    title: str = "Multi-Stage Workload Threat Chain"
+    summary: str = ""
+    tactics: List[str] = field(default_factory=list)
+    techniques: List[str] = field(default_factory=list)
+    events: List[SecurityEvent] = field(default_factory=list)
+    status: str = "OPEN"
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "incident_id": self.incident_id,
+            "created_at": self.created_at,
+            "cluster": self.cluster,
+            "namespace": self.namespace,
+            "pod": self.pod,
+            "container": self.container,
+            "severity": self.severity,
+            "confidence": round(self.confidence, 2),
+            "title": self.title,
+            "summary": self.summary,
+            "tactics": self.tactics,
+            "techniques": self.techniques,
+            "status": self.status,
+            "event_count": len(self.events),
+            "events": [e.to_dict() for e in self.events],
+            "metadata": self.metadata
+        }
+
