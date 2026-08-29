@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-worker
+  namespace: threatguard
+  labels:
+    app: analytics-worker
+    tier: worker
+    security.threatguard.io/profile: target
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-worker
+  template:
+    metadata:
+      labels:
+        app: analytics-worker
+        tier: worker
+        security.threatguard.io/profile: target
+    spec:
+      automountServiceAccountToken: true
+      containers:
+      - name: worker
+        image: alpine:3.19
+        command: ["/bin/sh", "-c", "apk add --no-cache curl python3 && while true; do sleep 3600; done"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          privileged: false
+        resources:
+          limits:
+            cpu: "250m"
+            memory: "128Mi"
+          requests:
+            cpu: "50m"
+            memory: "64Mi"

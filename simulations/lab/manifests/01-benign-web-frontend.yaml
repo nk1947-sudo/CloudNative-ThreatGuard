@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-frontend
+  namespace: threatguard
+  labels:
+    app: web-frontend
+    tier: frontend
+    security.threatguard.io/profile: benign
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-frontend
+  template:
+    metadata:
+      labels:
+        app: web-frontend
+        tier: frontend
+        security.threatguard.io/profile: benign
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: web
+        image: nginx:1.25-alpine
+        ports:
+        - containerPort: 8080
+          name: http
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          privileged: false
+          capabilities:
+            drop:
+            - ALL
+        resources:
+          limits:
+            cpu: "250m"
+            memory: "128Mi"
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-cache
+          mountPath: /var/cache/nginx
+        - name: var-run
+          mountPath: /var/run
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: var-cache
+        emptyDir: {}
+      - name: var-run
+        emptyDir: {}

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unauthorized-cryptominer
+  namespace: threatguard
+  labels:
+    app: unauthorized-cryptominer
+    tier: adversary
+    security.threatguard.io/profile: malicious
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unauthorized-cryptominer
+  template:
+    metadata:
+      labels:
+        app: unauthorized-cryptominer
+        tier: adversary
+        security.threatguard.io/profile: malicious
+    spec:
+      containers:
+      - name: miner
+        image: alpine:3.19
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "[XMRig-Emulation] Initializing cryptomining thread pool..."
+          cp /bin/sleep /tmp/xmrig
+          /tmp/xmrig 3600
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+          requests:
+            cpu: "100m"
+            memory: "64Mi"

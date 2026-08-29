@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: threatguard
+  labels:
+    app: payment-service
+    tier: backend
+    security.threatguard.io/profile: target
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+        tier: backend
+        security.threatguard.io/profile: target
+    spec:
+      automountServiceAccountToken: true
+      serviceAccountName: default
+      containers:
+      - name: payment
+        image: alpine:3.19
+        command: ["/bin/sh", "-c", "apk add --no-cache curl bash coreutils && while true; do sleep 3600; done"]
+        ports:
+        - containerPort: 9090
+          name: api
+        securityContext:
+          allowPrivilegeEscalation: true
+          readOnlyRootFilesystem: false
+          privileged: false
+        resources:
+          limits:
+            cpu: "300m"
+            memory: "256Mi"
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: threatguard
+spec:
+  selector:
+    app: payment-service
+  ports:
+  - port: 9090
+    targetPort: 9090
+    name: api
