@@ -6,46 +6,126 @@ CloudNative ThreatGuard implements a layered, **defense-in-depth** Kubernetes se
 
 ## 1. High-Level Target Architecture
 
-```
-                      CloudNative ThreatGuard
-                                │
-                      ┌─────────▼─────────┐
-                      │ Security Control  │
-                      │      Plane        │
-                      └─────────┬─────────┘
-                                │
-           ┌────────────────────┼────────────────────┐
-           │                    │                    │
-           ▼                    ▼                    ▼
-    Admission Layer       Runtime Layer       Detection Layer
-    OPA Gatekeeper        Tetragon/eBPF        Rule Engine
-           │                    │                    │
-           └────────────────────┼────────────────────┘
-                                │
-                                ▼
-                         Event Normalizer
-                                │
-                                ▼
-                         Correlation Engine
-                                │
-                  ┌─────────────┼──────────────┐
-                  │             │              │
-                  ▼             ▼              ▼
-               Risk         Incident        Response
-              Engine         Engine          Engine
-                  │             │              │
-                  └─────────────┼──────────────┘
-                                │
-                                ▼
-                          Security API
-                                │
-                                ▼
-                        SOC Web Dashboard
+```mermaid
+flowchart TD
+    subgraph K8s["Kubernetes Cluster & Control Plane"]
+        API["kube-apiserver"]
+        GK["OPA Gatekeeper Webhook"]
+        Workload["Workload Pods (threatguard namespace)"]
+        Kernel["Linux Kernel (5.15+ eBPF Tracing)"]
+        Tet["Tetragon DaemonSet"]
+        
+        API -->|Admission Review (mTLS:8443)| GK
+        GK -->|Block Misconfigurations| API
+        API -->|Admitted Pod Spec| Workload
+        Workload -->|Syscalls (execve, openat, connect)| Kernel
+        Kernel -->|eBPF kprobes & tracepoints| Tet
+    end
+
+    subgraph Normalization["Ingestion & Normalization Layer"]
+        StreamIn["Raw Telemetry Stream (JSONL / gRPC)"]
+        SimIn["Simulation Scenarios / Lab Triggers"]
+        Norm["SecurityEvent Normalizer v2"]
+        
+        Tet -->|Export Stream| StreamIn
+        GK -->|Violation Audit Logs| StreamIn
+        SimIn --> Norm
+        StreamIn --> Norm
+    end
+
+    subgraph CorrelationEngine["ThreatGuard Core Processing Engine"]
+        RuleReg["Detection Rule Registry (RULE-K8S-001..010)"]
+        SlidingWindow["Sliding Temporal Window Correlator"]
+        IncidentMgr["Incident Lifecycle Manager"]
+        RiskScore["Explainable Risk Scoring Engine"]
+        AttackChain["Attack Chain Visualizer (Mermaid & ASCII)"]
+        RemEngine["Safe Response Recommender (Dry-Run Safe)"]
+
+        Norm --> RuleReg
+        RuleReg --> SlidingWindow
+        SlidingWindow --> IncidentMgr
+        IncidentMgr --> RiskScore
+        IncidentMgr --> AttackChain
+        IncidentMgr --> RemEngine
+    end
+
+    subgraph Operations["Operator & SOC Delivery Layer"]
+        CLI["ThreatGuard CLI (threatguard)"]
+        ForensicCol["Forensic Evidence Collector"]
+        SOC["Security Dashboard (FastAPI / HTML5)"]
+        AuditReports["Audit Reports (JSON, MD, HTML)"]
+
+        IncidentMgr --> CLI
+        IncidentMgr --> SOC
+        ForensicCol --> AuditReports
+        RemEngine --> CLI
+    end
 ```
 
 ---
 
-## 2. Core Architecture Tenets
+## 2. Component Boundaries & Communication Protocols
+
+| Source Component | Destination Component | Protocol / Interface | Data Format | Authentication / Encryption |
+| :--- | :--- | :--- | :--- | :--- |
+| `kube-apiserver` | OPA Gatekeeper | HTTPS (port 8443) | `AdmissionReview` v1 JSON | Mutual TLS (mTLS) with API server CA |
+| Linux Kernel eBPF | Tetragon Agent | In-kernel BPF Ring Buffer / Perf Event Array | Binary eBPF telemetry struct | Kernel internal memory |
+| Tetragon DaemonSet | ThreatGuard Normalizer | POSIX stdout stream / gRPC (`/var/run/tetragon/tetragon.sock`) | Raw Tetragon JSON (`process_exec`, `process_kprobe`) | Local UNIX domain socket or container filesystem |
+| ThreatGuard Ingestion | Detection Engine | Internal Python Call / Async queue | `SecurityEvent` envelope v2 | In-process memory |
+| Incident Manager | ThreatGuard Operator CLI | CLI commands / Subprocess execution | Formatted text, Mermaid, JSON | Local terminal environment |
+| Remediation Engine | Kubernetes Cluster | `kubectl` CLI via API Server | Declarative YAML (`NetworkPolicy`, dry-run) | Kubernetes ServiceAccount / kubeconfig |
+| SOC Dashboard | ThreatGuard API | HTTP/1.1 (port 8080) | RESTful JSON | Cookie / Bearer token (configurable) |
+
+---
+
+## 3. Telemetry Normalization Schema (`SecurityEvent` v2)
+
+Every security signal originating from Gatekeeper, Tetragon, network flows, or simulation frameworks is normalized into the following standardized envelope:
+
+```json
+{
+  "event_id": "ev-7c42df98ab12",
+  "timestamp": "2026-09-05T18:42:15.123456Z",
+  "event_type": "runtime_detection",
+  "source": "tetragon",
+  "cluster": "threatguard-local",
+  "namespace": "threatguard",
+  "pod": "threatguard-target-pod",
+  "container": "target-container",
+  "node": "threatguard-local-control-plane",
+  "process": "/bin/sh",
+  "parent_process": "containerd-shim",
+  "executable": "/bin/sh",
+  "action": "detected",
+  "severity": "CRITICAL",
+  "confidence": 0.95,
+  "detection_rule": "RULE-K8S-001",
+  "mitre_technique": "T1059.004",
+  "mitre_tactic": "Execution",
+  "description": "Interactive Shell Execution in Workload Container",
+  "metadata": {
+    "binary": "/bin/sh",
+    "arguments": "-c whoami",
+    "pid": 12432,
+    "uid": 0,
+    "technique_name": "Command and Scripting Interpreter: Unix Shell"
+  }
+}
+```
+
+### Event Type Enumerations
+- `admission_violation`: Pod manifest rejected by OPA Gatekeeper constraint at webhook admission.
+- `runtime_detection`: Behavioral anomaly detected by in-kernel eBPF probes.
+- `network_anomaly`: Unauthorized egress or unexpected inter-pod network connection.
+- `policy_violation`: Non-compliant resource or configuration state.
+- `configuration_risk`: Insecure posture detected during static workload inspection.
+- `attack_simulation`: Deterministic scenario injected for security verification.
+- `incident`: Correlated multi-stage security incident entity.
+- `response_action`: Containment or remediation action recommended/executed.
+
+---
+
+## 4. Core Architecture Tenets
 
 ### 2.1 Prevention vs. Detection in Practice
 

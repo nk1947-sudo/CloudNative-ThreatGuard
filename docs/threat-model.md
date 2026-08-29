@@ -19,7 +19,97 @@ This threat model outlines the adversarial scenarios, potential attack paths, pr
 
 ---
 
-## 2. STRIDE Threat Categorization
+## 2. Threat Actor Profiles
+
+| Persona | Motivation | Capabilities & Access Level | Primary Attack Vectors |
+| :--- | :--- | :--- | :--- |
+| **External Opportunistic Attacker** | Financial gain (cryptomining, extortion), botnet recruitment | No initial cluster access; scans exposed public endpoints (Ingress, NodePort) | Exploit CVEs in web services, RCE injection, automated shell-spawning exploits |
+| **Compromised Developer / Insider** | Sabotage, data exfiltration, accidental misconfiguration | Valid Kubernetes credentials (`kubectl`), CI/CD pipeline access | Push overly permissive manifests (`privileged: true`, `hostPath: /`), bypass code review |
+| **Advanced Persistent Threat (APT)** | Espionage, intellectual property theft, deep persistence | High sophistication, kernel exploit capabilities, living-off-the-land techniques | Kernel zero-days, container escape (`sys_admin`), token theft, lateral movement to control plane |
+
+---
+
+## 3. Kubernetes Attack Surface Analysis
+
+The Kubernetes attack surface spans four distinct operational tiers:
+
+```mermaid
+graph TD
+    subgraph Tier1["1. External / Ingress Surface"]
+        ExtNet["Public Internet / VPC Egress"]
+        Ingress["Ingress Controller / LoadBalancer"]
+    end
+    subgraph Tier2["2. Workload & Container Surface"]
+        App["Container Application Logic"]
+        Shell["Container Shells & Binaries (/bin/sh, curl)"]
+        SA["Mounted ServiceAccount Tokens"]
+    end
+    subgraph Tier3["3. Node & Kernel Surface"]
+        Kubelet["Kubelet API (10250)"]
+        CRI["Container Runtime (containerd/CRI-O)"]
+        Kernel["Linux Kernel Syscalls & Namespaces"]
+    end
+    subgraph Tier4["4. Control Plane Surface"]
+        KubeAPI["Kubernetes API Server (6443)"]
+        Etcd["etcd Datastore (2379)"]
+    end
+
+    ExtNet --> Ingress --> App
+    App --> Shell
+    Shell --> SA
+    App --> Kernel
+    Kernel --> CRI
+    SA --> KubeAPI
+    KubeAPI --> Etcd
+```
+
+1. **Ingress & External Network**: Public-facing workloads exposed via Ingress or NodePort. Subject to HTTP request smuggling, deserialization, and RCE.
+2. **Workload & Container Runtime**: Execution environment within pods. Threats include interactive shells, utility abuse (`curl`, `nc`), token theft from `/var/run/secrets`, and local privilege escalation.
+3. **Node & Host Operating System**: Shared Linux kernel, container runtime sockets (`containerd.sock`), and host filesystems (`/etc`, `/proc`, `/sys`). Breakout threats leverage `hostPID`, `hostPath`, or missing AppArmor/Seccomp.
+4. **Control Plane & API Server**: The central orchestrator. Compromised workloads attempt to query `/api/v1` to enumerate secrets, create cluster roles, or launch privileged workloads on other nodes.
+
+---
+
+## 4. Trust Boundaries
+
+```
+[ External Untrusted Networks ]
+             │  (Internet / External APIs)
+═════════════▼══════════════════════════════════════════════════════ [ Boundary 1: Network Ingress ]
+[ Workload Pod: App Container ]  <─── Shared Namespace Pod Context
+             │  (Local syscalls / execve / file reads)
+═════════════▼══════════════════════════════════════════════════════ [ Boundary 2: Container Isolation ]
+[ Node Host OS & Kernel ]       <─── eBPF kprobes attach here
+             │  (Kubelet / API traffic)
+═════════════▼══════════════════════════════════════════════════════ [ Boundary 3: Cluster Control Plane ]
+[ Kubernetes API Server & etcd ]
+```
+
+- **Trust Boundary 1 (Network Ingress)**: Boundary between untrusted clients and container endpoints. Guarded by NetworkPolicies and ingress security controls.
+- **Trust Boundary 2 (Container / Node Isolation)**: Boundary between containerized cgroups/namespaces and the underlying host kernel. Guarded by OPA Gatekeeper (admission) and Tetragon (runtime).
+- **Trust Boundary 3 (Workload / Control Plane)**: Boundary between workload pods and the Kubernetes API server. Guarded by RBAC, disabled token automounting, and network isolation.
+
+---
+
+## 5. Mitigations Mapped to ThreatGuard Components
+
+| Threat Surface | Threat Scenario | ThreatGuard Component | Specific Mitigation / Rule |
+| :--- | :--- | :--- | :--- |
+| **Admission** | Privileged container requested in YAML | OPA Gatekeeper | `k8sprivilegedcontainer`: Rejects manifest before pod schedule |
+| **Admission** | Container mounts `/` or `/var/run/docker.sock` | OPA Gatekeeper | `k8shostfilesystem`: Rejects host path mounts |
+| **Admission** | Process requests `allowPrivilegeEscalation: true` | OPA Gatekeeper | `k8sprivilegeescalation`: Blocks root escalation permission |
+| **Runtime** | Attacker spawns `/bin/sh` or `/bin/bash` | Tetragon + Detection Registry | `RULE-K8S-001`: Traces `sys_enter_execve`, flags interactive shell |
+| **Runtime** | Attacker executes `curl` or `wget` to stage payload | Tetragon + Detection Registry | `RULE-K8S-002`: Traces utility execution, alerts on network tool |
+| **Runtime** | Attacker runs `whoami`, `id`, `uname` | Tetragon + Detection Registry | `RULE-K8S-003`: Identifies discovery / system fingerprinting |
+| **Runtime** | Reading `/var/run/secrets/.../token` | Tetragon + Detection Registry | `RULE-K8S-004`: Monitors `security_file_open`, alerts on credential access |
+| **Runtime** | Execution of `capsh` or `nsenter` | Tetragon + Detection Registry | `RULE-K8S-005`: Alerts on capability manipulation / privilege escalation |
+| **Runtime** | Outbound TCP beacon to unauthorized IP | Tetragon + Detection Registry | `RULE-K8S-006`: Flags unauthorized egress connections via `sys_enter_connect` |
+| **Incident** | Multi-stage killchain across workload | Correlation Engine | Aggregates events into single `#TG-xxx` incident record with Mermaid attack graph |
+| **Response** | Active breach containment required | Response Recommender | Generates non-destructive quarantine `NetworkPolicy` and token rotation commands |
+
+---
+
+## 6. STRIDE Threat Categorization
 
 - **Spoofing**: Impersonation of cluster identities via stolen ServiceAccount tokens (**THREAT-07**).
 - **Tampering**: Modifying binaries or configuration files on the container root filesystem (**THREAT-05**).
