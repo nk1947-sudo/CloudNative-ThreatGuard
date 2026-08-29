@@ -31,7 +31,11 @@ if command -v kubectl >/dev/null 2>&1 && kubectl get pods -n tetragon >/dev/null
     kubectl logs -n tetragon -l app.kubernetes.io/name=tetragon --tail=150 > "${ARTIFACTS_DIR}/runtime/tetragon-daemon.log" 2>/dev/null || true
 fi
 
-# 2. Re-compute dynamic security scorecard
+# 2. Generate consolidated forensic evidence and incident reports
+log_info "Generating normalized forensic evidence package..."
+python "${REPO_ROOT}/runtime/evidence_collector.py"
+
+# 3. Re-compute dynamic security scorecard
 log_info "Refreshing security scorecard and report metrics..."
 python "${REPO_ROOT}/scripts/generate-report.py"
 

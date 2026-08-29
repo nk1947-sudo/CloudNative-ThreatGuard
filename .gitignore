@@ -58,4 +58,6 @@ artifacts/admission/*
 artifacts/runtime/*
 artifacts/metrics/*
 artifacts/reports/*
+artifacts/incidents/*
+artifacts/forensics/*
 !artifacts/**/.gitkeep
