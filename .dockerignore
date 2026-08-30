@@ -19,5 +19,12 @@ simulations/
 observability/
 scripts/
 artifacts/
+screenshots/
 .github/
 Makefile
+run_tests.py
+verify-all.py
+verify-all.sh
+threatguard
+threatguard.py
+opa.exe
