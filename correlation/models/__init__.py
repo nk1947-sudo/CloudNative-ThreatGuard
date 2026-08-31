@@ -9,6 +9,11 @@ from correlation.models.event import (
     CloudProvider,
     Severity,
 )
+from correlation.models.mapping import (
+    IdentityBinding,
+    MappingMechanism,
+    IdentityMappingRegistry,
+)
 
 __all__ = [
     "UnifiedSecurityEvent",
@@ -16,4 +21,7 @@ __all__ = [
     "EventType",
     "CloudProvider",
     "Severity",
+    "IdentityBinding",
+    "MappingMechanism",
+    "IdentityMappingRegistry",
 ]
