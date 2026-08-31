@@ -14,6 +14,12 @@ from correlation.models.mapping import (
     MappingMechanism,
     IdentityMappingRegistry,
 )
+from correlation.models.incident import (
+    CrossDomainIncident,
+    IncidentStatus,
+    RemediationProposal,
+    UnifiedIncidentManager,
+)
 
 __all__ = [
     "UnifiedSecurityEvent",
@@ -24,4 +30,8 @@ __all__ = [
     "IdentityBinding",
     "MappingMechanism",
     "IdentityMappingRegistry",
+    "CrossDomainIncident",
+    "IncidentStatus",
+    "RemediationProposal",
+    "UnifiedIncidentManager",
 ]
