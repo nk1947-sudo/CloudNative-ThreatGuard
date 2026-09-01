@@ -27,4 +27,5 @@ verify-all.py
 verify-all.sh
 threatguard
 threatguard.py
+demo-cloud-security.py
 opa.exe
