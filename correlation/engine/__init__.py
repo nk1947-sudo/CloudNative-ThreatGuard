@@ -7,9 +7,17 @@ from correlation.engine.correlation_engine import (
     CorrelatedAttackChain,
     CorrelatedCluster,
 )
+from correlation.engine.risk_evaluator import (
+    CrossDomainRiskEvaluator,
+    UnifiedRiskAssessment,
+    RiskFactor,
+)
 
 __all__ = [
     "CrossDomainCorrelationEngine",
     "CorrelatedAttackChain",
     "CorrelatedCluster",
+    "CrossDomainRiskEvaluator",
+    "UnifiedRiskAssessment",
+    "RiskFactor",
 ]
