@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudNative ThreatGuard — Unified Cloud Identity & Kubernetes Security</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0A0F1D;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.8);
+            --border-color: #1F2937;
+            --accent-blue: #3B82F6;
+            --accent-cyan: #06B6D4;
+            --accent-red: #EF4444;
+            --accent-purple: #8B5CF6;
+            --accent-green: #10B981;
+            --accent-orange: #F59E0B;
+            --text-primary: #F9FAFB;
+            --text-secondary: #9CA3AF;
+            --text-muted: #6B7280;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(17, 24, 39, 0.95);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            color: #fff;
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .brand-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .status-indicators {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .nav-container {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 2rem;
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .nav-tab {
+            padding: 0.85rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Metric Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+        }
+
+        .metric-card.critical::before { background: var(--accent-red); }
+        .metric-card.purple::before { background: var(--accent-purple); }
+        .metric-card.orange::before { background: var(--accent-orange); }
+        .metric-card.cyan::before { background: var(--accent-cyan); }
+        .metric-card.green::before { background: var(--accent-green); }
+
+        .metric-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .metric-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+        }
+
+        /* 2-Column Split View */
+        .split-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Incident Item */
+        .incident-item {
+            background: rgba(31, 41, 55, 0.5);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+
+        .incident-item:hover {
+            transform: translateX(4px);
+            border-color: var(--accent-cyan);
+        }
+
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .incident-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-size: 0.85rem;
+        }
+
+        .incident-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .incident-chain {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: rgba(0, 0, 0, 0.25);
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.4); }
+        .badge.high { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); border: 1px solid rgba(245, 158, 11, 0.4); }
+        .badge.medium { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); border: 1px solid rgba(59, 130, 246, 0.4); }
+        .badge.low { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.4); }
+
+        .tag-cgg { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.4); font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; }
+        .tag-tg { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.4); font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 3px; }
+
+        .graph-container {
+            background: #0D1117;
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .remediation-box {
+            background: rgba(17, 24, 39, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .code-snippet {
+            font-family: 'JetBrains Mono', monospace;
+            background: #000;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            color: #A5F3FC;
+            font-size: 0.8rem;
+            margin-top: 0.35rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <div class="brand-badge">THREATGUARD</div>
+        <div class="brand-title">Cloud Identity & Kubernetes Runtime Security</div>
+    </div>
+    <div class="status-indicators">
+        <div>EKS: <strong style="color:var(--text-primary)">threatguard-cluster</strong></div>
+        <div>AWS Account: <strong style="color:var(--text-primary)">123456789012</strong></div>
+        <div class="status-pill">
+            <div class="status-dot"></div>
+            <span>PLATFORM VERIFIED (12/12)</span>
+        </div>
+    </div>
+</header>
+
+<nav class="nav-container">
+    <div class="nav-tab active" onclick="switchTab('overview')">Overview</div>
+    <div class="nav-tab" onclick="switchTab('cloud-iam')">Cloud IAM</div>
+    <div class="nav-tab" onclick="switchTab('kubernetes')">Kubernetes</div>
+    <div class="nav-tab" onclick="switchTab('attack-paths')">Attack Paths</div>
+    <div class="nav-tab" onclick="switchTab('incidents')">Incidents</div>
+    <div class="nav-tab" onclick="switchTab('runtime-events')">Runtime Events</div>
+    <div class="nav-tab" onclick="switchTab('admission')">Admission</div>
+    <div class="nav-tab" onclick="switchTab('workloads')">Workloads</div>
+    <div class="nav-tab" onclick="switchTab('policies')">Policies</div>
+    <div class="nav-tab" onclick="switchTab('forensics')">Forensics</div>
+    <div class="nav-tab" onclick="switchTab('metrics')">Metrics</div>
+    <div class="nav-tab" onclick="switchTab('settings')">Settings</div>
+</nav>
+
+<main>
+    <!-- TAB 1: OVERVIEW -->
+    <div id="overview" class="tab-content active">
+        <div class="metrics-grid">
+            <div class="metric-card purple">
+                <div class="metric-title">Identity Risk (CloudGraphGuard)</div>
+                <div class="metric-value">12 <span style="font-size:0.9rem;font-weight:400;color:var(--accent-red)">Critical</span></div>
+                <div class="metric-subtitle">PassRole, Wildcards, Trust Escalations</div>
+            </div>
+            <div class="metric-card critical">
+                <div class="metric-title">Runtime Risk (ThreatGuard)</div>
+                <div class="metric-value">4 <span style="font-size:0.9rem;font-weight:400;color:var(--accent-red)">Critical</span></div>
+                <div class="metric-subtitle">eBPF Intercepted Syscall Violations</div>
+            </div>
+            <div class="metric-card orange">
+                <div class="metric-title">Attack Paths</div>
+                <div class="metric-value">7 <span style="font-size:0.9rem;font-weight:400;color:var(--accent-orange)">Exploitable</span></div>
+                <div class="metric-subtitle">Multi-hop Cloud to Container Traversals</div>
+            </div>
+            <div class="metric-card cyan">
+                <div class="metric-title">Open Incidents</div>
+                <div class="metric-value">3 <span style="font-size:0.9rem;font-weight:400;color:var(--text-secondary)">Active</span></div>
+                <div class="metric-subtitle">Correlated Multi-Stage Attacks</div>
+            </div>
+            <div class="metric-card red">
+                <div class="metric-title">Blast Radius</div>
+                <div class="metric-value" style="color:var(--accent-red)">HIGH</div>
+                <div class="metric-subtitle">Production S3 & K8s Secrets Exposed</div>
+            </div>
+        </div>
+
+        <div class="split-grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Correlated Cross-Domain Incidents</div>
+                    <span class="badge critical">Active Triage</span>
+                </div>
+                
+                <div class="incident-item" onclick="switchTab('incidents')">
+                    <div class="incident-header">
+                        <span class="incident-id">CDI-0001</span>
+                        <span class="badge critical">RISK 94.0</span>
+                    </div>
+                    <div class="incident-title">Potential Cloud Identity to Kubernetes Credential Compromise</div>
+                    <p style="font-size:0.8rem;color:var(--text-secondary)">
+                        Developer identity escalated privileges via PassRole to assume EKS deployer role, resulting in interactive shell spawn and K8s ServiceAccount token exfiltration.
+                    </p>
+                    <div class="incident-chain">
+                        developer (IAM) &rarr; eks-deployer-role &rarr; EKS Cluster &rarr; threatguard-workload-sa &rarr; threatguard-target-pod &rarr; token read
+                    </div>
+                </div>
+
+                <div class="incident-item" onclick="switchTab('incidents')">
+                    <div class="incident-header">
+                        <span class="incident-id">CDI-0002</span>
+                        <span class="badge high">RISK 82.5</span>
+                    </div>
+                    <div class="incident-title">Suspicious Network Tool Execution via Unprotected IRSA Role</div>
+                    <p style="font-size:0.8rem;color:var(--text-secondary)">
+                        Analytics worker pod utilized netcat utility to establish external outbound socket connection to C2 IP 198.51.100.24:4444.
+                    </p>
+                    <div class="incident-chain">
+                        analytics-worker-role (IAM) &rarr; IRSA &rarr; analytics-sa &rarr; analytics-worker &rarr; netcat connect
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">High-Risk Entities</div>
+                </div>
+                <h4 style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem">Cloud Principals</h4>
+                <div style="font-size:0.85rem;margin-bottom:1rem">
+                    <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span>developer <span class="tag-cgg">IAM</span></span>
+                        <span class="badge critical">Score 88.5</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span>eks-deployer-role <span class="tag-cgg">IAM</span></span>
+                        <span class="badge high">Score 80.0</span>
+                    </div>
+                </div>
+
+                <h4 style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem">Kubernetes Workloads</h4>
+                <div style="font-size:0.85rem;margin-bottom:1rem">
+                    <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span>threatguard-target-pod <span class="tag-tg">K8S</span></span>
+                        <span class="badge critical">Score 92.0</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+                        <span>analytics-worker <span class="tag-tg">K8S</span></span>
+                        <span class="badge high">Score 75.0</span>
+                    </div>
+                </div>
+
+                <h4 style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.5rem">Sensitive Assets at Risk</h4>
+                <div style="font-size:0.8rem;color:var(--accent-red)">
+                    &bull; /var/run/secrets/kubernetes.io/serviceaccount/token<br/>
+                    &bull; arn:aws:s3:::prod-financial-records<br/>
+                    &bull; arn:aws:secretsmanager:::secret:database-credentials
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: ATTACK PATHS -->
+    <div id="attack-paths" class="tab-content">
+        <div class="card" style="margin-bottom:1.5rem">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Cross-Domain Attack Graph Visualization</div>
+                    <div style="font-size:0.85rem;color:var(--text-secondary)">
+                        Multi-hop traversal spanning Cloud IAM (Purple: CloudGraphGuard) and Kubernetes Workloads (Cyan/Dark: ThreatGuard)
+                    </div>
+                </div>
+                <button style="background:var(--accent-cyan);color:#000;border:none;padding:0.5rem 1rem;border-radius:6px;font-weight:600;cursor:pointer">
+                    Export Mermaid
+                </button>
+            </div>
+
+            <div class="graph-container">
+                <pre class="mermaid">
+flowchart TD
+    IAM_USER["developer<br/>[CGG: IAM_USER]"]
+    IAM_ROLE["eks_deployer_role<br/>[CGG: IAM_ROLE]"]
+    EKS_CLUSTER["threatguard_cluster<br/>[CGG: EKS_CLUSTER]"]
+    K8S_SA["threatguard_workload_sa<br/>[TG: K8S_SERVICE_ACCOUNT]"]
+    K8S_POD["threatguard_target_pod<br/>[TG: K8S_POD]"]
+    RUNTIME_EVENT["execve /bin/bash<br/>[TG: RUNTIME_DETECTION]"]
+    SECRET["serviceaccount/token<br/>[TG: SECRET]"]
+    TARGET_S3["prod_customer_data<br/>[CGG: S3]"]
+
+    IAM_USER -->|ASSUME_ROLE (PassRole)| IAM_ROLE
+    IAM_ROLE -->|EKS_ACCESS (AccessEntry)| EKS_CLUSTER
+    EKS_CLUSTER -->|MAPPED_TO| K8S_SA
+    K8S_SA -->|RUNS| K8S_POD
+    K8S_POD -->|EXECUTED| RUNTIME_EVENT
+    RUNTIME_EVENT -->|ACCESSED| SECRET
+    SECRET -.->|EXFILTRATE_TO| TARGET_S3
+
+    classDef cggStyle fill:#4A154B,stroke:#9B51E0,stroke-width:2px,color:#FFFFFF;
+    classDef tgStyle fill:#1E293B,stroke:#06B6D4,stroke-width:2px,color:#FFFFFF;
+    classDef alertStyle fill:#7F1D1D,stroke:#EF4444,stroke-width:2px,color:#FFFFFF;
+
+    class IAM_USER,IAM_ROLE,EKS_CLUSTER,TARGET_S3 cggStyle;
+    class K8S_SA,K8S_POD tgStyle;
+    class RUNTIME_EVENT,SECRET alertStyle;
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: INCIDENTS -->
+    <div id="incidents" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Unified Security Incidents Dossier</div>
+                <span class="status-pill"><div class="status-dot"></div> Lifecycle Engine Active</span>
+            </div>
+
+            <div style="background:rgba(31,41,55,0.8);border-radius:8px;padding:1.5rem;border:1px solid var(--border-color)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                    <div>
+                        <span class="incident-id">CDI-0001</span>
+                        <h2 style="font-size:1.3rem;margin-top:0.25rem">Potential Cloud Identity to Kubernetes Credential Compromise</h2>
+                    </div>
+                    <div>
+                        <span class="badge critical">CRITICAL &bull; 94.0</span>
+                    </div>
+                </div>
+
+                <div class="metrics-grid" style="margin-bottom:1rem">
+                    <div style="background:#000;padding:0.75rem;border-radius:6px">
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">STATUS</div>
+                        <strong style="color:var(--accent-cyan)">NEW / UNCONTAINED</strong>
+                    </div>
+                    <div style="background:#000;padding:0.75rem;border-radius:6px">
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">AFFECTED CLUSTER</div>
+                        <strong>threatguard-cluster</strong>
+                    </div>
+                    <div style="background:#000;padding:0.75rem;border-radius:6px">
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">CLOUD IDENTITY</div>
+                        <strong>arn:aws:iam::...:role/eks-deployer</strong>
+                    </div>
+                    <div style="background:#000;padding:0.75rem;border-radius:6px">
+                        <div style="font-size:0.75rem;color:var(--text-secondary)">WORKLOAD</div>
+                        <strong>threatguard-target-pod</strong>
+                    </div>
+                </div>
+
+                <h3 style="font-size:1rem;margin-bottom:0.5rem;color:var(--accent-cyan)">Dual-Track Remediation Recommendations (Dry-Run Only)</h3>
+                
+                <div class="remediation-box">
+                    <strong style="color:var(--accent-purple)">[Track 1: Cloud IAM Remediation]</strong>
+                    <p style="font-size:0.85rem;margin:0.25rem 0">Remove wildcard iam:PassRole permission from developer policy and restrict to explicit role ARNs.</p>
+                    <div class="code-snippet">aws iam get-user-policy --user-name developer --policy-name PassRoleEscalationPolicy --dry-run</div>
+                </div>
+
+                <div class="remediation-box">
+                    <strong style="color:var(--accent-red)">[Track 2: Kubernetes Workload Remediation]</strong>
+                    <p style="font-size:0.85rem;margin:0.25rem 0">Quarantine affected workload by applying default-deny zero-trust network isolation label.</p>
+                    <div class="code-snippet">kubectl label pod threatguard-target-pod-12345 -n threatguard security.threatguard.io/quarantine=true --dry-run=client</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: CLOUD IAM -->
+    <div id="cloud-iam" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">CloudGraphGuard &bull; AWS IAM Privilege Escalation & Access Findings</div>
+                <span class="tag-cgg">Engine: CloudGraphGuard</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Finding ID</th>
+                        <th>Type</th>
+                        <th>Principal</th>
+                        <th>Target Role / Resource</th>
+                        <th>Severity</th>
+                        <th>Risk Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">CGG-PVE-001</td>
+                        <td>IAM_PRIVILEGE_ESCALATION</td>
+                        <td>user/developer</td>
+                        <td>role/eks-deployer-role</td>
+                        <td><span class="badge critical">CRITICAL</span></td>
+                        <td>88.5</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">CGG-WLD-002</td>
+                        <td>IAM_WILDCARD_PERMISSION</td>
+                        <td>role/admin-fallback</td>
+                        <td>arn:aws:iam:::*</td>
+                        <td><span class="badge high">HIGH</span></td>
+                        <td>80.0</td>
+                    </tr>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">CGG-EXC-003</td>
+                        <td>IAM_SENSITIVE_RESOURCE_ACCESS</td>
+                        <td>role/analytics-worker-role</td>
+                        <td>arn:aws:s3:::prod-customer-data</td>
+                        <td><span class="badge high">HIGH</span></td>
+                        <td>75.0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 3: KUBERNETES -->
+    <div id="kubernetes" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">ThreatGuard &bull; Kubernetes Workload Security Posture</div>
+                <span class="tag-tg">Engine: CloudNative ThreatGuard</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Namespace</th>
+                        <th>Workload</th>
+                        <th>ServiceAccount</th>
+                        <th>Enforced Controls</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>threatguard</td>
+                        <td>threatguard-workload</td>
+                        <td>threatguard-workload-sa</td>
+                        <td>runAsNonRoot, readOnlyRootFS, drop ALL</td>
+                        <td><span class="badge low">HARDENED</span></td>
+                    </tr>
+                    <tr>
+                        <td>threatguard</td>
+                        <td>threatguard-target-pod</td>
+                        <td>threatguard-sa</td>
+                        <td>Standard Pod Security</td>
+                        <td><span class="badge critical">COMPROMISED</span></td>
+                    </tr>
+                    <tr>
+                        <td>threatguard</td>
+                        <td>analytics-worker</td>
+                        <td>analytics-sa</td>
+                        <td>IRSA Enabled</td>
+                        <td><span class="badge high">ELEVATED</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 6: RUNTIME EVENTS -->
+    <div id="runtime-events" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Cilium Tetragon eBPF Kernel Event Log</div>
+                <span class="status-pill"><div class="status-dot"></div> Stream Active</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event ID</th>
+                        <th>Workload</th>
+                        <th>Process / Syscall</th>
+                        <th>Action</th>
+                        <th>MITRE Technique</th>
+                        <th>Severity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">ev-rt-001</td>
+                        <td>threatguard-target-pod</td>
+                        <td>/bin/bash (execve)</td>
+                        <td>process_exec</td>
+                        <td>T1059.004</td>
+                        <td><span class="badge high">HIGH</span></td>
+                    </tr>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">ev-rt-004</td>
+                        <td>threatguard-target-pod</td>
+                        <td>/var/run/secrets/.../token (openat)</td>
+                        <td>sensitive_file_read</td>
+                        <td>T1552.004</td>
+                        <td><span class="badge critical">CRITICAL</span></td>
+                    </tr>
+                    <tr>
+                        <td style="font-family:'JetBrains Mono'">ev-rt-006</td>
+                        <td>threatguard-target-pod</td>
+                        <td>198.51.100.24:4444 (connect)</td>
+                        <td>net_connect</td>
+                        <td>T1048</td>
+                        <td><span class="badge high">HIGH</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 7: ADMISSION -->
+    <div id="admission" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">OPA Gatekeeper Admission Policy Enforcement</div>
+                <span class="badge low">100% Rate</span>
+            </div>
+            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1rem">
+                All 8 ConstraintTemplates verified active. Insecure privileged pods, root executions, and hostPath mounts are rejected at the Kubernetes API admission phase.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Constraint</th>
+                        <th>Template</th>
+                        <th>Enforcement</th>
+                        <th>Blocked Manifests</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>k8sdisallowprivileged</td>
+                        <td>K8sDisallowPrivileged</td>
+                        <td>dryrun=false</td>
+                        <td>04-misconfigured-privileged-pod.yaml</td>
+                    </tr>
+                    <tr>
+                        <td>k8sdisallowhostpath</td>
+                        <td>K8sDisallowHostPath</td>
+                        <td>dryrun=false</td>
+                        <td>03-misconfigured-hostpath-pod.yaml</td>
+                    </tr>
+                    <tr>
+                        <td>k8srequiredcapabilitiesdrop</td>
+                        <td>K8sRequiredCapabilitiesDrop</td>
+                        <td>dryrun=false</td>
+                        <td>Enforces drop: [ALL]</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 8: WORKLOADS -->
+    <div id="workloads" class="tab-content">
+        <div class="card">
+            <div class="card-header"><div class="card-title">Workload Risk Posture Registry</div></div>
+            <p style="font-size:0.85rem;color:var(--text-secondary)">Calculated dynamically via ThreatGuard RiskScoringEngine.</p>
+        </div>
+    </div>
+
+    <!-- TAB 9: POLICIES -->
+    <div id="policies" class="tab-content">
+        <div class="card">
+            <div class="card-header"><div class="card-title">Active Security Policies</div></div>
+            <p style="font-size:0.85rem;color:var(--text-secondary)">8 OPA Gatekeeper Rego Constraints & 6 Tetragon eBPF TracingPolicies loaded.</p>
+        </div>
+    </div>
+
+    <!-- TAB 10: FORENSICS -->
+    <div id="forensics" class="tab-content">
+        <div class="card">
+            <div class="card-header"><div class="card-title">Forensic Evidence & Audit Packages</div></div>
+            <p style="font-size:0.85rem;color:var(--text-secondary)">Evidence packages available in artifacts/forensics/ and artifacts/reports/.</p>
+        </div>
+    </div>
+
+    <!-- TAB 11: METRICS -->
+    <div id="metrics" class="tab-content">
+        <div class="card">
+            <div class="card-header"><div class="card-title">Prometheus Text Metrics Preview (:9100/metrics)</div></div>
+            <div class="code-snippet">
+threatguard_cloud_iam_risks_total{severity="critical"} 12<br/>
+threatguard_cloud_runtime_threats_total{severity="critical"} 4<br/>
+threatguard_open_incidents_total 3<br/>
+threatguard_exploitable_attack_paths_total 7<br/>
+threatguard_admission_enforcement_rate 100.0<br/>
+threatguard_detection_rate 100.0
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 12: SETTINGS -->
+    <div id="settings" class="tab-content">
+        <div class="card">
+            <div class="card-header"><div class="card-title">Platform Configuration</div></div>
+            <p style="font-size:0.85rem;color:var(--text-secondary)">Protected Namespace: <code>threatguard</code> | Mode: <code>Dual-Engine Correlated</code></p>
+        </div>
+    </div>
+</main>
+
+<script>
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+        const targetContent = document.getElementById(tabId);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+
+        const tabs = document.querySelectorAll('.nav-tab');
+        tabs.forEach(t => {
+            if (t.textContent.trim().toLowerCase().replace(/ /g, '-') === tabId ||
+                (tabId === 'overview' && t.textContent.trim() === 'Overview') ||
+                (tabId === 'cloud-iam' && t.textContent.trim() === 'Cloud IAM')) {
+                t.classList.add('active');
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

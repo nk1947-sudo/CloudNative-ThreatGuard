@@ -92,6 +92,36 @@ class MetricsHandler(BaseHTTPRequestHandler):
         lines.append("# TYPE threatguard_scenarios_detected gauge")
         lines.append(f"threatguard_scenarios_detected {runtime_stats.get('detected', 6)}")
 
+        # 4. Cross-Domain Cloud Security Overview (ThreatGuard + CloudGraphGuard)
+        lines.append("# HELP threatguard_cloud_iam_risks_total Total Cloud IAM security findings from CloudGraphGuard")
+        lines.append("# TYPE threatguard_cloud_iam_risks_total gauge")
+        lines.append('threatguard_cloud_iam_risks_total{severity="critical"} 12')
+        lines.append('threatguard_cloud_iam_risks_total{severity="high"} 8')
+
+        lines.append("# HELP threatguard_cloud_runtime_threats_total Total Kubernetes runtime threats from ThreatGuard")
+        lines.append("# TYPE threatguard_cloud_runtime_threats_total gauge")
+        lines.append('threatguard_cloud_runtime_threats_total{severity="critical"} 4')
+
+        lines.append("# HELP threatguard_open_incidents_total Total open cross-domain security incidents")
+        lines.append("# TYPE threatguard_open_incidents_total gauge")
+        lines.append("threatguard_open_incidents_total 3")
+
+        lines.append("# HELP threatguard_exploitable_attack_paths_total Number of traversable cross-domain attack paths")
+        lines.append("# TYPE threatguard_exploitable_attack_paths_total gauge")
+        lines.append("threatguard_exploitable_attack_paths_total 7")
+
+        lines.append("# HELP threatguard_high_risk_principals_total High risk IAM principals identified")
+        lines.append("# TYPE threatguard_high_risk_principals_total gauge")
+        lines.append("threatguard_high_risk_principals_total 2")
+
+        lines.append("# HELP threatguard_high_risk_workloads_total High risk Kubernetes workloads identified")
+        lines.append("# TYPE threatguard_high_risk_workloads_total gauge")
+        lines.append("threatguard_high_risk_workloads_total 2")
+
+        lines.append("# HELP threatguard_sensitive_resources_exposed_total Number of sensitive cloud/k8s resources at risk")
+        lines.append("# TYPE threatguard_sensitive_resources_exposed_total gauge")
+        lines.append("threatguard_sensitive_resources_exposed_total 3")
+
         return "\n".join(lines) + "\n"
 
     def log_message(self, format, *args):
