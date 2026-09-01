@@ -340,6 +340,49 @@ make dashboard
 ```
 Serves metrics on `http://localhost:9100/metrics`.
 
+### 5. Run Unified Cloud Identity + Kubernetes Security Demo (Offline, No AWS Credentials)
+```bash
+make demo-cloud
+# Or directly:
+python demo-cloud-security.py
+```
+Executes the full cross-domain kill chain: IAM PassRole privilege escalation &rarr; EKS Access Entry &rarr; ServiceAccount mapping &rarr; eBPF runtime shell execution &rarr; credential token read &rarr; dual-track dry-run remediation.
+
+---
+
+## CloudGraphGuard Integration: Unified Cloud Identity & Kubernetes Security
+
+ThreatGuard unites with **CloudGraphGuard** (AWS IAM attack-path and least-privilege engine) to provide defense-in-depth across both cloud identities and Kubernetes runtime environments.
+
+### The Unified Kill Chain
+
+```
+IDENTITY (AWS IAM User: developer)
+   ↓ [sts:AssumeRole / iam:PassRole]
+CLOUD ROLE (eks-deployer-role)
+   ↓ [Amazon EKS Access Entry API]
+KUBERNETES IDENTITY (threatguard-workload-sa)
+   ↓ [Deployment Pod Binding]
+WORKLOAD (threatguard-target-pod)
+   ↓ [Cilium Tetragon eBPF Kernel Probe]
+RUNTIME ACTIVITY (/bin/bash, openat token)
+   ↓ [Network Socket Connect: 198.51.100.24:4444]
+SENSITIVE RESOURCE EXPOSURE
+```
+
+### Integration Capabilities
+
+| Layer | Component | Functionality |
+| :--- | :--- | :--- |
+| **Shared Event Contract** | `correlation/models/event.py` | Normalized `UnifiedSecurityEvent` (v1.0) for both IAM findings and eBPF events |
+| **Identity-K8s Mapper** | `correlation/models/mapping.py` | Resolves IAM Roles &rarr; EKS Access Entries &rarr; ServiceAccounts &rarr; Pods |
+| **Correlation Engine** | `correlation/engine/correlation_engine.py` | Detects cross-domain kill chains and generates causal attack sequences |
+| **Unified Attack Graph** | `correlation/graph/unified_graph.py` | Heterogeneous directed graph with Mermaid visualizer and edge provenance |
+| **Dual-Track Remediation**| `correlation/models/incident.py` | Advisory dry-run remediation commands for both AWS IAM and Kubernetes |
+| **Composite Risk Scoring**| `correlation/engine/risk_evaluator.py` | Multi-factor risk formula attributing score contributions across domains |
+| **SOC Web Console** | `observability/dashboard/unified_dashboard.html` | Unified dashboard with Cloud Security overview, findings, and attack paths |
+| **Offline Demo** | `demo-cloud-security.py` | Deterministic demonstration requiring **zero AWS credentials** |
+
 ---
 
 ## Limitations
