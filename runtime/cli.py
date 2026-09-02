@@ -81,7 +81,7 @@ class ThreatGuardCLI:
         tet_ok = False
         if k8s_ok:
             try:
-                res = subprocess.run(["kubectl", "get", "pods", "-n", "kube-system", "-l", "app.kubernetes.io/name=tetragon"],
+                res = subprocess.run(["kubectl", "get", "pods", "-A", "-l", "app.kubernetes.io/name=tetragon"],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
                 tet_ok = "Running" in res.stdout
             except Exception:
@@ -143,7 +143,18 @@ class ThreatGuardCLI:
             print(visualizer.to_json())
         else:
             print("--- ATTACK CHAIN TIMELINE ---")
-            print(visualizer.to_ascii())
+            timeline = visualizer.to_ascii()
+            try:
+                print(timeline)
+            except UnicodeEncodeError:
+                safe_timeline = (
+                    timeline.replace("▼", "v")
+                    .replace("╔", "+").replace("═", "=").replace("╗", "+")
+                    .replace("║", "|").replace("╚", "+").replace("╝", "+")
+                    .replace("┌", "+").replace("─", "-").replace("│", "|")
+                    .replace("└──", "+--")
+                )
+                print(safe_timeline)
 
         print("\n--- RECOMMENDED REMEDIATIONS ---")
         for rec in inc.get("recommended_actions", []):
