@@ -81,21 +81,7 @@ if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     log_info "KIND cluster '${CLUSTER_NAME}' already exists."
 else
     log_info "Creating KIND cluster '${CLUSTER_NAME}' with eBPF mount support..."
-    cat << EOF | kind create cluster --name "${CLUSTER_NAME}" --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  image: kindest/node:v1.30.0
-  extraMounts:
-  - hostPath: /sys/kernel/debug
-    containerPath: /sys/kernel/debug
-  - hostPath: /sys/fs/bpf
-    containerPath: /sys/fs/bpf
-  - hostPath: /lib/modules
-    containerPath: /lib/modules
-    readOnly: true
-EOF
+    kind create cluster --name "${CLUSTER_NAME}" --config "${SCRIPT_DIR}/kind-config.yaml"
     log_success "KIND cluster '${CLUSTER_NAME}' created successfully."
 fi
 
