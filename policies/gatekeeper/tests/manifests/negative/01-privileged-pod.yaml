@@ -16,7 +16,7 @@ spec:
       image: cgr.dev/chainguard/python:latest
       securityContext:
         privileged: true # VIOLATION: privileged must be false
-        allowPrivilegeEscalation: false
+        allowPrivilegeEscalation: true
         readOnlyRootFilesystem: true
         runAsNonRoot: true
         runAsUser: 10001
