@@ -293,19 +293,27 @@ class ThreatGuardCorrelationEngine:
         if not os.path.exists(filepath):
             return new_detections
 
-        with open(filepath, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    event = json.loads(line)
-                    det = self.process_raw_tetragon_event(event, record=False)
-                    if det:
-                        self.detections.append(det)
-                        new_detections.append(det)
-                except json.JSONDecodeError:
-                    continue
+        lines = []
+        for enc in ["utf-8-sig", "utf-16", "utf-8", "latin-1"]:
+            try:
+                with open(filepath, "r", encoding=enc) as f:
+                    lines = f.readlines()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+                det = self.process_raw_tetragon_event(event, record=False)
+                if det:
+                    self.detections.append(det)
+                    new_detections.append(det)
+            except json.JSONDecodeError:
+                continue
         return new_detections
 
     def get_summary(self) -> Dict[str, Any]:
