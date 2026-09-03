@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cloudnative-threatguard"
+version = "2.0.0"
+description = "Kubernetes defense-in-depth security platform: OPA Gatekeeper admission control, Cilium Tetragon eBPF runtime detection, cross-domain cloud/Kubernetes correlation, and automated attack simulation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "CloudNative ThreatGuard Contributors" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+    "Intended Audience :: Information Technology",
+]
+dependencies = [
+    "pydantic>=2.0,<3.0",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "build>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cloudnative-threatguard/cloudnative-threatguard"
+Issues = "https://github.com/cloudnative-threatguard/cloudnative-threatguard/issues"
+
+[project.scripts]
+threatguard = "cloudnative_threatguard.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"cloudnative_threatguard" = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
