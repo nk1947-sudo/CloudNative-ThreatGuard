@@ -15,8 +15,7 @@ GATEKEEPER_VERSION="v3.17.0"
 TETRAGON_VERSION="v1.1.2"
 
 log_step "1. Creating protected namespace 'threatguard'..."
-kubectl create namespace threatguard --dry-run=client -o yaml | kubectl apply -f -
-kubectl label namespace threatguard security.threatguard.io/monitored=true --overwrite
+kubectl apply -f "${REPO_ROOT}/deploy/kubernetes/namespace.yaml"
 
 log_step "2. Installing OPA Gatekeeper (${GATEKEEPER_VERSION})..."
 kubectl apply -f "https://raw.githubusercontent.com/open-policy-agent/gatekeeper/${GATEKEEPER_VERSION}/deploy/gatekeeper.yaml"
@@ -25,13 +24,13 @@ log_info "Waiting for Gatekeeper controller to become ready..."
 kubectl rollout status deployment/gatekeeper-controller-manager -n gatekeeper-system --timeout=180s
 
 log_step "3. Applying Gatekeeper ConstraintTemplates..."
-kubectl apply -f "${REPO_ROOT}/policies/gatekeeper/templates/"
+kubectl apply -f "${REPO_ROOT}/deploy/gatekeeper/templates/"
 
 log_info "Waiting for ConstraintTemplate CRDs to register..."
 sleep 5
 
 log_step "4. Applying Gatekeeper Constraints..."
-kubectl apply -f "${REPO_ROOT}/policies/gatekeeper/constraints/"
+kubectl apply -f "${REPO_ROOT}/deploy/gatekeeper/constraints/"
 log_success "Gatekeeper admission policies applied successfully."
 
 # Ensure Helm is available
@@ -60,13 +59,13 @@ helm repo update
 helm upgrade --install tetragon cilium/tetragon \
     --namespace tetragon \
     --create-namespace \
-    -f "${REPO_ROOT}/runtime/tetragon/values.yaml"
+    -f "${REPO_ROOT}/deploy/tetragon/values.yaml"
 
 log_info "Waiting for Tetragon DaemonSet to become ready..."
 kubectl rollout status ds/tetragon -n tetragon --timeout=120s || log_warn "Tetragon rollout taking time; continuing..."
 
 log_step "6. Applying Tetragon TracingPolicies..."
-kubectl apply -f "${REPO_ROOT}/runtime/tetragon/policies/"
+kubectl apply -f "${REPO_ROOT}/deploy/tetragon/policies/"
 log_success "eBPF TracingPolicies loaded."
 
 log_step "7. Deploying Attack Simulation Target Pod..."

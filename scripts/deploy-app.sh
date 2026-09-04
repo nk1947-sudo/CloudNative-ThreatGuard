@@ -23,25 +23,24 @@ fi
 
 if command -v docker >/dev/null 2>&1; then
     log_info "Building application container image..."
-    docker build -t cloudnative-threatguard/sample-app:v1.0.0 "${REPO_ROOT}/app"
+    docker build -t cloudnative-threatguard/sample-app:v1.0.0 "${REPO_ROOT}/app/secure-web-app"
     if command -v kind >/dev/null 2>&1 && kind get clusters 2>/dev/null | grep -q "^threatguard-cluster$"; then
         log_info "Loading image into KIND cluster..."
         kind load docker-image cloudnative-threatguard/sample-app:v1.0.0 --name threatguard-cluster
     fi
 fi
 
-if ! kubectl get namespace threatguard >/dev/null 2>&1; then
-    kubectl create namespace threatguard
-fi
+log_info "Ensuring 'threatguard' namespace exists..."
+kubectl apply -f "${REPO_ROOT}/deploy/kubernetes/namespace.yaml"
 
 log_info "Applying Kubernetes NetworkPolicy..."
-kubectl apply -f "${REPO_ROOT}/app/k8s/network-policy.yaml"
+kubectl apply -f "${REPO_ROOT}/app/secure-web-app/k8s/network-policy.yaml"
 
 log_info "Applying Kubernetes Service..."
-kubectl apply -f "${REPO_ROOT}/app/k8s/service.yaml"
+kubectl apply -f "${REPO_ROOT}/app/secure-web-app/k8s/service.yaml"
 
 log_info "Applying Hardened Deployment..."
-kubectl apply -f "${REPO_ROOT}/app/k8s/deployment.yaml"
+kubectl apply -f "${REPO_ROOT}/app/secure-web-app/k8s/deployment.yaml"
 
 log_info "Verifying Gatekeeper admission and rollout..."
 if kubectl rollout status deployment/threatguard-app -n threatguard --timeout=90s; then

@@ -34,9 +34,9 @@ fi
 # Step 3: Policy validation (Rego unit tests)
 log_step "Step 3/11: Static Policy Validation (Rego Unit Tests)"
 if command -v opa >/dev/null 2>&1; then
-    opa test "${REPO_ROOT}/policies/gatekeeper/src" "${REPO_ROOT}/policies/gatekeeper/tests/rego" -v
+    opa test "${REPO_ROOT}/deploy/gatekeeper/src" "${REPO_ROOT}/deploy/gatekeeper/tests/rego" -v
 elif [ -f "${REPO_ROOT}/opa.exe" ]; then
-    "${REPO_ROOT}/opa.exe" test "${REPO_ROOT}/policies/gatekeeper/src" "${REPO_ROOT}/policies/gatekeeper/tests/rego" -v
+    "${REPO_ROOT}/opa.exe" test "${REPO_ROOT}/deploy/gatekeeper/src" "${REPO_ROOT}/deploy/gatekeeper/tests/rego" -v
 else
     log_warn "OPA binary not found in PATH; checking python validator..."
 fi

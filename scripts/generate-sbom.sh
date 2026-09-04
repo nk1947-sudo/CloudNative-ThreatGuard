@@ -21,10 +21,10 @@ log_step "Generating Software Bill of Materials (SBOM)..."
 
 if command -v syft >/dev/null 2>&1; then
     log_info "Generating SBOM using Syft..."
-    syft "${IMAGE_TAG}" -o cyclonedx-json > "${SBOM_FILE}" 2>/dev/null || syft dir:"${REPO_ROOT}/app" -o cyclonedx-json > "${SBOM_FILE}"
+    syft "${IMAGE_TAG}" -o cyclonedx-json > "${SBOM_FILE}" 2>/dev/null || syft dir:"${REPO_ROOT}/app/secure-web-app" -o cyclonedx-json > "${SBOM_FILE}"
 elif command -v trivy >/dev/null 2>&1; then
     log_info "Generating SBOM using Trivy..."
-    trivy image --format cyclonedx --output "${SBOM_FILE}" "${IMAGE_TAG}" 2>/dev/null || trivy fs --format cyclonedx --output "${SBOM_FILE}" "${REPO_ROOT}/app"
+    trivy image --format cyclonedx --output "${SBOM_FILE}" "${IMAGE_TAG}" 2>/dev/null || trivy fs --format cyclonedx --output "${SBOM_FILE}" "${REPO_ROOT}/app/secure-web-app"
 else
     log_warn "Neither Syft nor Trivy is installed. Generating structured software dependency manifest..."
     python -c "

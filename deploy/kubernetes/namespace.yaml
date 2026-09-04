@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: threatguard
+  labels:
+    app.kubernetes.io/name: cloudnative-threatguard
+    security.threatguard.io/monitored: "true"

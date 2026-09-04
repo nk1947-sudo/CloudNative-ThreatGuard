@@ -100,11 +100,12 @@ echo "======================================================================"
 
 python -c "
 import sys, json, os
-from runtime.engine.correlation_engine import ThreatGuardCorrelationEngine
-from runtime.engine.risk_engine import RiskScoringEngine
-from runtime.engine.models import SecurityEvent
+from cloudnative_threatguard.detection.engine import DetectionEngine
+from cloudnative_threatguard.correlation.kubernetes import correlate_incidents
+from cloudnative_threatguard.reporting.risk import RiskScoringEngine
+from cloudnative_threatguard.runtime.events import SecurityEvent
 
-engine = ThreatGuardCorrelationEngine(protected_namespace='${NAMESPACE}')
+engine = DetectionEngine(protected_namespace='${NAMESPACE}')
 raw_file = '${ARTIFACTS_RUNTIME}/tetragon-raw.json'
 detections = engine.ingest_file(raw_file)
 
@@ -127,7 +128,7 @@ with open(out_file, 'w', encoding='utf-8') as f:
     json.dump([e.to_dict() for e in security_events], f, indent=2)
 
 # Correlate incidents
-incidents = engine.correlate_incidents()
+incidents = correlate_incidents(security_events)
 incident_file = '${ARTIFACTS_RUNTIME}/incident-reports.json'
 with open(incident_file, 'w', encoding='utf-8') as f:
     json.dump([i.to_dict() for i in incidents], f, indent=2)

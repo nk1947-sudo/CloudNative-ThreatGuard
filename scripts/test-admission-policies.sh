@@ -32,7 +32,7 @@ if [ "$IS_LIVE_GATEKEEPER" = true ]; then
     
     : > "${ARTIFACTS_ADM}/rejections.log"
     
-    for manifest in "${REPO_ROOT}"/policies/gatekeeper/tests/manifests/negative/*.yaml; do
+    for manifest in "${REPO_ROOT}"/deploy/gatekeeper/tests/manifests/negative/*.yaml; do
         bname=$(basename "${manifest}")
         echo -n "Testing ${bname}... "
         if out=$(kubectl apply --dry-run=server -f "${manifest}" 2>&1); then
@@ -47,7 +47,7 @@ if [ "$IS_LIVE_GATEKEEPER" = true ]; then
     done
     
     # Check positive manifest
-    pos_manifest="${REPO_ROOT}/policies/gatekeeper/tests/manifests/positive/secure-workload.yaml"
+    pos_manifest="${REPO_ROOT}/deploy/gatekeeper/tests/manifests/positive/secure-workload.yaml"
     if kubectl apply --dry-run=server -f "${pos_manifest}" >/dev/null 2>&1; then
         log_success "Positive compliant workload successfully allowed."
     else
@@ -68,7 +68,7 @@ with open('${RESULTS_JSON}', 'w', encoding='utf-8') as f:
 "
 else
     log_info "Running OPA engine admission manifest evaluation..."
-    python "${REPO_ROOT}/policies/gatekeeper/tests/validate_admission_manifests.py"
+    threatguard admission validate
     
     python -c "
 import json

@@ -33,10 +33,10 @@ fi
 
 # 2. Generate consolidated forensic evidence and incident reports
 log_info "Generating normalized forensic evidence package..."
-python "${REPO_ROOT}/runtime/evidence_collector.py"
+threatguard report evidence
 
 # 3. Re-compute dynamic security scorecard
 log_info "Refreshing security scorecard and report metrics..."
-python "${REPO_ROOT}/scripts/generate-report.py"
+threatguard report scorecard
 
 log_success "Evidence collection complete. Review artifacts in '${ARTIFACTS_DIR}/'."

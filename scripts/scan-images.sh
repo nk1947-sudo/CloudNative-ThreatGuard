@@ -19,8 +19,8 @@ SCAN_REPORT="${OUTPUT_DIR}/trivy-scan-report.json"
 log_step "Executing supply-chain security scanning..."
 
 if command -v trivy >/dev/null 2>&1; then
-    log_info "Running Trivy filesystem and configuration scan on app/..."
-    trivy fs --config "${REPO_ROOT}/trivy.yaml" --format json --output "${SCAN_REPORT}" "${REPO_ROOT}/app"
+    log_info "Running Trivy filesystem and configuration scan on app/secure-web-app/..."
+    trivy fs --config "${REPO_ROOT}/trivy.yaml" --format json --output "${SCAN_REPORT}" "${REPO_ROOT}/app/secure-web-app"
     log_success "Trivy scan results saved to ${SCAN_REPORT}"
 else
     log_warn "Trivy is not installed locally. Generating baseline vulnerability assessment..."
@@ -29,7 +29,7 @@ import json, datetime
 report = {
     'scanner': 'trivy-baseline-check',
     'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    'target': 'app/',
+    'target': 'app/secure-web-app/',
     'findings': [],
     'summary': {
         'CRITICAL': 0,
