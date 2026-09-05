@@ -36,7 +36,7 @@ Each scenario includes:
 * **Pre-check**: Verify Gatekeeper admission controller webhook is operational.
 * **Command**:
   ```bash
-  kubectl apply -f policies/gatekeeper/tests/01-privileged-pod.yaml
+  kubectl apply -f deploy/gatekeeper/tests/manifests/negative/01-privileged-pod.yaml
   ```
 * **Expected Result**: API server rejection:
   `Error from server (Forbidden): admission webhook "validation.gatekeeper.sh" denied the request: [privilege-escalation] Privileged container is not allowed`

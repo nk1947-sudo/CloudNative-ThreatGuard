@@ -47,14 +47,14 @@ kubectl get pods -n tetragon 2>/dev/null && echo "Tetragon: OK" || echo "Tetrago
   ```
 
 ### Problem: ConstraintTemplate CRDs fail to apply
-- **Symptom**: `error: unable to recognize "policies/gatekeeper/templates/...": no matches for kind "ConstraintTemplate"`
+- **Symptom**: `error: unable to recognize "deploy/gatekeeper/templates/...": no matches for kind "ConstraintTemplate"`
 - **Cause**: Gatekeeper CRDs have not completed registration with the Kubernetes API server.
 - **Resolution**:
   Re-apply the Gatekeeper deployment manifest and allow 10 seconds for CRD registration before applying templates:
   ```bash
   kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/v3.17.0/deploy/gatekeeper.yaml
   sleep 10
-  kubectl apply -f policies/gatekeeper/templates/
+  kubectl apply -f deploy/gatekeeper/templates/
   ```
 
 ---

@@ -61,8 +61,8 @@ kubectl rollout status -n gatekeeper-system deployment/gatekeeper-audit --timeou
 ### Apply ThreatGuard ConstraintTemplates & Constraints
 Register the parameterized Rego templates and instantiate constraints:
 ```bash
-kubectl apply -f policies/gatekeeper/templates/
-kubectl apply -f policies/gatekeeper/constraints/
+kubectl apply -f deploy/gatekeeper/templates/
+kubectl apply -f deploy/gatekeeper/constraints/
 ```
 
 ### Verification
@@ -132,5 +132,5 @@ Access the SOC console at `http://127.0.0.1:8080`.
 ### Verify Operator CLI
 Verify CLI accessibility:
 ```bash
-python runtime/cli.py status
+threatguard status
 ```

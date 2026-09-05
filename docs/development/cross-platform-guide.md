@@ -66,5 +66,5 @@ macOS uses the Darwin kernel (XNU), not Linux.
 
 To ensure full reproducibility even on developer workstations where Docker or a live Kubernetes cluster may not be immediately running:
 - The **OPA Rego policy test suite** runs 100% offline via `opa test`.
-- The **Admission Manifest Validator** runs offline via `python policies/gatekeeper/tests/validate_admission_manifests.py`.
+- The **Admission Manifest Validator** runs offline via `threatguard admission validate`.
 - The **ThreatGuard Correlation Engine** parses captured and simulated eBPF traces deterministically, verifying all detection rules and generating accurate scorecards in `artifacts/`.

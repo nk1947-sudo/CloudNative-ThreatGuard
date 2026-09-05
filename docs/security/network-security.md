@@ -29,7 +29,7 @@ In modern zero-trust Kubernetes deployments, workload isolation at the network l
 
 ## 2. Policy Enforcement Breakdown
 
-The policy `app/k8s/network-policy.yaml` establishes an explicit default-deny perimeter for the protected application:
+The policy `app/secure-web-app/k8s/network-policy.yaml` establishes an explicit default-deny perimeter for the protected application:
 
 ### Ingress Filtering
 - **Permitted**: Incoming HTTP requests on application port `8080` from within the namespace or authorized gateway pods.

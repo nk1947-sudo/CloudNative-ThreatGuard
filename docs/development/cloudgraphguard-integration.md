@@ -14,16 +14,16 @@ $$\text{Cloud Identity} \longrightarrow \text{EKS / Cloud Access} \longrightarro
 ### 2.1 Existing CloudNative ThreatGuard Architecture
 * **Admission Control**: OPA Gatekeeper enforcing 8 constraint templates (`K8sDisallowPrivileged`, `K8sDisallowRootUser`, `K8sRequiredCapabilitiesDrop`, `K8sDisallowHostPath`, `K8sRequiredReadOnlyRootFilesystem`, `K8sAllowedHostPorts`, `K8sRequiredResourceLimits`, `K8sDisallowPrivilegeEscalation`).
 * **Kernel Runtime Detection**: Cilium Tetragon eBPF tracing policies intercepting raw syscalls (`sys_enter_execve`, `sys_enter_openat`, `sys_enter_connect`, `sys_enter_setuid`).
-* **Workload Security**: Hardened microservice baseline (`app/src/app.py`), lab environment (`simulations/lab/`), and automated simulation framework (`simulations/scenarios/`).
-* **Detection & Analysis**: Rule registry (`runtime/engine/rules.py`), correlation engine (`correlation_engine.py`), risk scoring (`risk_engine.py`), MITRE ATT&CK mapping (`mitre_mapping.py`), incident lifecycle manager (`incident_engine.py`), and forensic collector (`evidence_collector.py`).
-* **Observability & Operations**: Prometheus metrics exporter (`metrics_exporter.py`), Grafana dashboard, operator CLI (`runtime/cli.py`), and verification harness (`verify-all.py`).
+* **Workload Security**: Hardened microservice baseline (`app/secure-web-app/src/app.py`), lab environment (`simulations/lab/`), and automated simulation framework (`simulations/scenarios/`).
+* **Detection & Analysis**: Rule registry (`src/cloudnative_threatguard/detection/rules.py`), detection engine (`src/cloudnative_threatguard/detection/engine.py`), single-cluster correlation (`src/cloudnative_threatguard/correlation/kubernetes.py`), risk scoring (`src/cloudnative_threatguard/reporting/risk.py`), MITRE ATT&CK mapping (`src/cloudnative_threatguard/detection/mitre_mapping.py`), incident lifecycle manager (`src/cloudnative_threatguard/reporting/incidents.py`), and forensic collector (`src/cloudnative_threatguard/reporting/evidence.py`).
+* **Observability & Operations**: Prometheus metrics exporter (`src/cloudnative_threatguard/observability/metrics_exporter.py`), Grafana dashboard, operator CLI (`threatguard`), and verification harness (`threatguard verify`).
 
 ### 2.2 CloudGraphGuard Architecture
-* **Cloud IAM Ingestion**: AWS IAM collector ingesting users, roles, groups, instance profiles, managed policies, inline policies, and trust policies (`cloudgraphguard/models/iam.py`).
+* **Cloud IAM Ingestion**: AWS IAM collector ingesting users, roles, groups, instance profiles, managed policies, inline policies, and trust policies (`src/cloudnative_threatguard/cloudgraphguard/models/iam.py`).
 * **Normalization Engine**: Provider-neutral representation of identities, permissions, actions, and resource boundaries.
 * **Effective Permission Evaluator**: Computes resolved permissions accounting for permission boundaries, SCPs, identity-based policies, and resource-based policies.
-* **Trust & Privilege Escalation Analysis**: Analyzes `sts:AssumeRole`, cross-account trust boundaries, and well-known AWS IAM privilege escalation vectors (e.g., `iam:PassRole`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`) via `cloudgraphguard/analysis/escalation.py`.
-* **Attack Path & Blast Radius Graph**: Directed graph analyzing multi-hop traversal paths from initial principal identities to high-value assets (S3 buckets, databases, KMS keys) via `cloudgraphguard/graph/iam_graph.py`.
+* **Trust & Privilege Escalation Analysis**: Analyzes `sts:AssumeRole`, cross-account trust boundaries, and well-known AWS IAM privilege escalation vectors (e.g., `iam:PassRole`, `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`) via `src/cloudnative_threatguard/cloudgraphguard/analysis/escalation.py`.
+* **Attack Path & Blast Radius Graph**: Directed graph analyzing multi-hop traversal paths from initial principal identities to high-value assets (S3 buckets, databases, KMS keys) via `src/cloudnative_threatguard/cloudgraphguard/graph/iam_graph.py`.
 * **Remediation Engine**: Deterministic policy diffing, least-privilege policy generation, and dry-run remediation validation.
 
 ---
@@ -32,7 +32,7 @@ $$\text{Cloud Identity} \longrightarrow \text{EKS / Cloud Access} \longrightarro
 
 1. **Decoupled Engines**: CloudGraphGuard and ThreatGuard remain independent engines. Neither imports the other's internal implementation details.
 2. **Shared Contract / Event Model**: Inter-system communication occurs via a versioned, provider-neutral security event schema (`UnifiedSecurityEvent` v1.0).
-3. **No Unnecessary Merging**: Engines are not combined into a monolithic codebase; they are coordinated via a dedicated integration layer (`correlation/`).
+3. **No Unnecessary Merging**: Engines are not combined into a monolithic codebase; they are coordinated via a dedicated integration layer (`src/cloudnative_threatguard/correlation/cross_domain/`).
 4. **Deterministic & Offline First**: Zero cloud dependencies or AWS credentials required for integration verification and demonstration.
 5. **Read-Only / Non-Mutating**: Remediation proposals remain recommendations/dry-run only; no automatic mutation of cloud or Kubernetes resources.
 
@@ -77,11 +77,11 @@ graph TD
 
 | Model | Purpose | Location |
 | :--- | :--- | :--- |
-| **Unified Security Event** (`UnifiedSecurityEvent`) | Standardized event contract for IAM risks, runtime detections, admission violations, and network anomalies | `correlation/models/event.py` |
-| **Identity-K8s Mapping** (`IdentityBinding`, `IdentityMappingRegistry`) | Explicit bindings between Cloud IAM roles, EKS access entries, K8s ServiceAccounts, and Workloads | `correlation/models/mapping.py` |
-| **Unified Security Graph** (`UnifiedSecurityGraph`) | Heterogeneous directed graph modeling IAM principals, cloud resources, Kubernetes workloads, and security events | `correlation/graph/unified_graph.py` |
-| **Unified Incident** (`CrossDomainIncident`) | Multi-stage incident model linking initial cloud identity compromise to runtime workload exploitation | `correlation/models/incident.py` |
-| **Unified Risk Score** (`UnifiedRiskAssessment`) | Multi-factor risk model combining IAM attack paths, workload criticality, runtime detection severity, and blast radius | `correlation/engine/risk_evaluator.py` |
+| **Unified Security Event** (`UnifiedSecurityEvent`) | Standardized event contract for IAM risks, runtime detections, admission violations, and network anomalies | `src/cloudnative_threatguard/correlation/cross_domain/models/event.py` |
+| **Identity-K8s Mapping** (`IdentityBinding`, `IdentityMappingRegistry`) | Explicit bindings between Cloud IAM roles, EKS access entries, K8s ServiceAccounts, and Workloads | `src/cloudnative_threatguard/correlation/cross_domain/models/mapping.py` |
+| **Unified Security Graph** (`UnifiedSecurityGraph`) | Heterogeneous directed graph modeling IAM principals, cloud resources, Kubernetes workloads, and security events | `src/cloudnative_threatguard/correlation/cross_domain/graph/unified_graph.py` |
+| **Unified Incident** (`CrossDomainIncident`) | Multi-stage incident model linking initial cloud identity compromise to runtime workload exploitation | `src/cloudnative_threatguard/correlation/cross_domain/models/incident.py` |
+| **Unified Risk Score** (`UnifiedRiskAssessment`) | Multi-factor risk model combining IAM attack paths, workload criticality, runtime detection severity, and blast radius | `src/cloudnative_threatguard/correlation/cross_domain/engine/risk_evaluator.py` |
 
 ---
 
@@ -89,17 +89,17 @@ graph TD
 
 The integration has been executed across 12 distinct, fully tested, and committed stages:
 
-* **STAGE 1**: Integration architecture definition and boundaries (`docs/cloudgraphguard-integration.md`).
-* **STAGE 2**: Shared Pydantic v2 event schema (`correlation/models/event.py`).
-* **STAGE 3**: CloudGraphGuard identity engine and event adapter (`cloudgraphguard/`, `correlation/adapters/cgg_adapter.py`).
-* **STAGE 4**: ThreatGuard event adapter (`correlation/adapters/tg_adapter.py`).
-* **STAGE 5**: Cloud Identity to Kubernetes relationship model (`correlation/models/mapping.py`).
-* **STAGE 6**: Cross-domain correlation engine (`correlation/engine/correlation_engine.py`).
-* **STAGE 7**: Unified attack graph abstraction and Mermaid visualizer (`correlation/graph/unified_graph.py`).
-* **STAGE 8**: Cross-domain incident model and dual-track remediation manager (`correlation/models/incident.py`).
-* **STAGE 9**: Multi-factor cross-domain risk scoring engine (`correlation/engine/risk_evaluator.py`).
+* **STAGE 1**: Integration architecture definition and boundaries (`docs/development/cloudgraphguard-integration.md`).
+* **STAGE 2**: Shared Pydantic v2 event schema (`src/cloudnative_threatguard/correlation/cross_domain/models/event.py`).
+* **STAGE 3**: CloudGraphGuard identity engine and event adapter (`src/cloudnative_threatguard/cloudgraphguard/`, `src/cloudnative_threatguard/correlation/cross_domain/adapters/cgg_adapter.py`).
+* **STAGE 4**: ThreatGuard event adapter (`src/cloudnative_threatguard/correlation/cross_domain/adapters/tg_adapter.py`).
+* **STAGE 5**: Cloud Identity to Kubernetes relationship model (`src/cloudnative_threatguard/correlation/cross_domain/models/mapping.py`).
+* **STAGE 6**: Cross-domain correlation engine (`src/cloudnative_threatguard/correlation/cross_domain/engine/correlation_engine.py`).
+* **STAGE 7**: Unified attack graph abstraction and Mermaid visualizer (`src/cloudnative_threatguard/correlation/cross_domain/graph/unified_graph.py`).
+* **STAGE 8**: Cross-domain incident model and dual-track remediation manager (`src/cloudnative_threatguard/correlation/cross_domain/models/incident.py`).
+* **STAGE 9**: Multi-factor cross-domain risk scoring engine (`src/cloudnative_threatguard/correlation/cross_domain/engine/risk_evaluator.py`).
 * **STAGE 10**: Unified SOC dashboard (`observability/dashboard/unified_dashboard.html`) and Prometheus metrics.
-* **STAGE 11**: Fully deterministic offline demonstration (`demo-cloud-security.py`).
+* **STAGE 11**: Fully deterministic offline demonstration (`threatguard demo cross-domain`).
 * **STAGE 12**: Platform integration documentation and runbook updates.
 
 ---
@@ -145,16 +145,16 @@ Remediation proposals are strictly advisory and dry-run to ensure safety:
 
 ```bash
 # Execute deterministic cross-domain cloud security demo (0 credentials required)
-python demo-cloud-security.py
+threatguard demo cross-domain
 
 # Or via Makefile
 make demo-cloud
 
-# Run correlation unit tests
-python -m unittest discover correlation/tests/
+# Run cross-domain correlation unit tests
+pytest tests/unit/correlation/cross_domain/
 
 # Verify entire ThreatGuard platform
-python verify-all.py
+threatguard verify
 ```
 
 ---

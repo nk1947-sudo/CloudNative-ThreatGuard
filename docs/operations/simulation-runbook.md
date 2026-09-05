@@ -30,7 +30,7 @@ python -m unittest simulations/test_simulations.py -v
 * **Description**: Verifies that OPA Gatekeeper blocks pods violating Kubernetes hardening standards.
 * **Execution**:
   ```bash
-  kubectl apply -f policies/gatekeeper/tests/01-privileged-pod.yaml
+  kubectl apply -f deploy/gatekeeper/tests/manifests/negative/01-privileged-pod.yaml
   ```
 * **Expected Result**: Immediate admission denial from the API server:
   ```text
@@ -148,17 +148,17 @@ Following scenario execution, perform the following verification steps:
 
 1. **List Active Correlated Incidents**:
    ```bash
-   python runtime/cli.py incidents list
+   threatguard incidents list
    ```
 2. **Inspect Highest Risk Incident**:
    ```bash
-   python runtime/cli.py incidents show <incident_id>
+   threatguard incidents show <incident_id>
    ```
 3. **Review Dry-Run Remediation Guidance**:
    ```bash
-   python runtime/cli.py remediate <incident_id> --dry-run
+   threatguard remediate <incident_id> --dry-run
    ```
 4. **Collect Forensic Evidence Package**:
    ```bash
-   python runtime/evidence_collector.py
+   threatguard report evidence
    ```
