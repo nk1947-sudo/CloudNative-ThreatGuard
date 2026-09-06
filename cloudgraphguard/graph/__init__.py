@@ -1,3 +1,0 @@
-"""
-CloudGraphGuard Directed IAM Graph.
-"""

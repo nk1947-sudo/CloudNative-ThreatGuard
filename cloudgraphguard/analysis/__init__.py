@@ -1,3 +1,0 @@
-"""
-CloudGraphGuard IAM Analysis Engine.
-"""
