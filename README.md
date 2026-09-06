@@ -2,8 +2,8 @@
 
 > A Kubernetes defense-in-depth security engineering platform combining **OPA Gatekeeper** for deterministic pre-deployment admission control with **Cilium Tetragon eBPF** for behavioral runtime threat detection, automated attack simulations, and verified security telemetry.
 
-[![CI Policy Validation](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci-policy-validation.yaml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci-policy-validation.yaml)
-[![CI Security Scan](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci-security-scan.yaml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci-security-scan.yaml)
+[![CI](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci.yml)
+[![Security Scan](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/security.yml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/security.yml)
 [![Kubernetes Version](https://img.shields.io/badge/kubernetes-v1.30+-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
 [![OPA Gatekeeper](https://img.shields.io/badge/OPA%20Gatekeeper-v3.17-orange)](https://open-policy-agent.github.io/gatekeeper/)
 [![Cilium Tetragon](https://img.shields.io/badge/eBPF-Tetragon%20v1.1-blue)](https://tetragon.io)
@@ -256,50 +256,74 @@ Severity Breakdown:   CRITICAL: 3 | HIGH: 2 | MEDIUM: 1
 ```
 cloudnative-threatguard/
 ├── .github/workflows/
-│   ├── ci-policy-validation.yaml    # OPA test & Kubeconform manifest validation
-│   ├── ci-security-scan.yaml        # Hadolint, ShellCheck, and Trivy scan
-│   └── ci-cluster-e2e.yaml          # KIND cluster deployment & E2E verification
-├── app/
+│   ├── ci.yml                       # Package install, ruff, pytest, OPA test & Kubeconform
+│   ├── security.yml                 # Hadolint, ShellCheck, and Trivy scan
+│   ├── e2e.yml                      # KIND cluster deployment & E2E verification
+│   └── release.yml                  # Build & verify the sdist/wheel on version tags
+├── src/cloudnative_threatguard/     # The installable Python package
+│   ├── cli/                         # threatguard operator CLI (main.py, verify.py)
+│   ├── admission/                   # OPA subprocess client & Gatekeeper manifest validator
+│   ├── runtime/                     # Shared SecurityEvent/Severity/SecurityIncident model
+│   ├── detection/                   # Detection rule registry & raw-telemetry matching engine
+│   ├── correlation/
+│   │   ├── kubernetes.py            # Single-cluster incident grouping
+│   │   └── cross_domain/            # CloudGraphGuard <-> ThreatGuard cross-domain engine
+│   ├── reporting/                   # Risk scoring, incidents, investigation, attack chains,
+│   │                                 # remediation recommendations, evidence/scorecard export
+│   ├── cloudgraphguard/             # AWS IAM attack-path & privilege-escalation analysis
+│   ├── observability/               # Prometheus metrics exporter
+│   ├── config/                      # Centralized settings (paths, defaults)
+│   └── utils/                       # Small generic helpers
+├── tests/
+│   ├── unit/<domain>/                # Fast, isolated tests mirroring src/cloudnative_threatguard/
+│   ├── integration/<domain>/         # Cross-module / filesystem / external-tool tests
+│   └── fixtures/                     # Shared sample data (e.g. raw Tetragon events)
+├── app/secure-web-app/
 │   ├── Dockerfile                   # Multi-stage hardened non-root container
-│   ├── src/app.py                   # Hardened Python/Flask microservice
+│   ├── src/app.py                   # Hardened Python/Flask microservice (own requirements.txt)
 │   └── k8s/                         # Hardened Deployment, Service & NetworkPolicy
-├── policies/gatekeeper/
-│   ├── templates/                   # 8 Gatekeeper ConstraintTemplates
-│   ├── constraints/                 # 8 Gatekeeper Constraints
-│   ├── src/                         # Standalone Rego policy modules
-│   └── tests/
-│       ├── rego/                    # 27 OPA Rego unit tests
-│       └── manifests/               # 8 Negative and 1 Positive test workloads
-├── runtime/
-│   ├── tetragon/
-│   │   ├── values.yaml              # Tetragon Helm values
-│   │   └── policies/                # 6 TracingPolicies (RUNTIME-001 to 006)
-│   └── engine/                      # Correlation engine, rules, and unit tests
+├── deploy/
+│   ├── kubernetes/namespace.yaml    # The `threatguard` namespace
+│   ├── gatekeeper/                  # 8 ConstraintTemplates, 8 Constraints, Rego src & tests
+│   └── tetragon/                    # Helm values + 7 TracingPolicies (RUNTIME-001 to 007)
 ├── simulations/
 │   ├── manifests/test-pod.yaml      # Simulation execution target pod
-│   ├── scenarios/                   # SCEN-001 through SCEN-006 test scripts
+│   ├── lab/                         # Isolated lab manifests (benign, target, misconfigured)
+│   ├── scenarios/                   # SCEN-000 through SCEN-008 attack scripts
 │   └── run_simulations.sh           # Master simulation orchestrator
 ├── observability/
-│   ├── exporter/                    # Prometheus metrics exporter
 │   ├── grafana/dashboards/          # Grafana Security Operations dashboard
 │   └── prometheus/alerts.yaml       # Alertmanager rule definitions
 ├── scripts/
-│   ├── setup-cluster.sh             # KIND cluster provisioning with eBPF mounts
+│   ├── setup-cluster.sh / teardown-cluster.sh   # KIND cluster lifecycle (eBPF mounts)
 │   ├── install-security-stack.sh    # Gatekeeper & Tetragon installation
 │   ├── test-admission-policies.sh   # Admission enforcement tester
 │   ├── run-security-validation.sh   # 11-step master test harness
-│   └── generate-report.py           # Dynamic scorecard generator
+│   └── collect-evidence.sh, generate-sbom.sh, scan-images.sh
 ├── docs/
-│   ├── architecture.md              # In-depth architectural analysis
-│   ├── threat-model.md              # STRIDE & ATT&CK threat model
-│   ├── mitre-attack-mapping.md      # ATT&CK technique matrix
-│   ├── network-security.md          # Micro-segmentation & NetworkPolicy
-│   ├── cross-platform-guide.md      # Linux / WSL2 / macOS guidance
-│   └── troubleshooting.md           # Operational diagnostic procedures
-├── artifacts/                       # Structured JSON evidence & scorecards
-├── Makefile                         # Intuitive build & test targets
+│   ├── architecture/                # System architecture & the prior audit findings
+│   ├── security/                    # STRIDE threat model, ATT&CK mapping, network security
+│   ├── operations/                  # Deployment, incident response, troubleshooting runbooks
+│   ├── development/                 # Cross-platform guide, CloudGraphGuard integration design
+│   └── assets/screenshots/          # Verification screenshots, by category
+├── artifacts/                       # Structured JSON evidence & scorecards (generated, gitignored)
+├── pyproject.toml                   # Package metadata, dependencies, [project.scripts]
+├── Makefile                         # Primary developer interface
 └── README.md
 ```
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/cloudnative-threatguard/cloudnative-threatguard.git
+cd cloudnative-threatguard
+pip install -e ".[dev]"
+```
+
+This installs the `cloudnative_threatguard` package and exposes the **`threatguard`** command on your
+PATH. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup.
 
 ---
 
@@ -308,7 +332,7 @@ cloudnative-threatguard/
 - **Docker**: Docker Desktop (Windows/macOS) or Docker Engine (Linux).
 - **kubectl**: Kubernetes CLI v1.28+.
 - **KIND**: Kubernetes in Docker (`go install sigs.k8s.io/kind@latest`).
-- **Python**: Python 3.10+ (for correlation engine and test scripts).
+- **Python**: Python 3.10+ (for the `cloudnative_threatguard` package and test suite).
 - **Open Policy Agent (OPA)**: For local Rego testing (`opa test`).
 - **Linux Kernel**: Linux 5.4+ (5.15+ recommended) for live eBPF tracing. In Windows, WSL2 provides the Linux 6.x kernel.
 
@@ -318,15 +342,15 @@ cloudnative-threatguard/
 
 ### 1. Run Unit & Manifest Tests (Works on all platforms)
 ```bash
-make test
+make test              # full pytest suite
+make test-admission    # 27 Rego policy unit tests + 8 negative admission manifests
 ```
-Executes all 27 Rego policy unit tests and validates all 8 negative admission manifests.
 
 ### 2. Execute Attack Simulations & Generate Telemetry
 ```bash
 make simulate
 ```
-Executes all 6 attack scenarios and outputs correlated detections to `artifacts/runtime/runtime-events.json`.
+Executes the attack scenarios and outputs correlated detections to `artifacts/runtime/runtime-events.json`.
 
 ### 3. Run the Complete 11-Step Security Test Harness
 ```bash
@@ -344,9 +368,20 @@ Serves metrics on `http://localhost:9100/metrics`.
 ```bash
 make demo-cloud
 # Or directly:
-python demo-cloud-security.py
+threatguard demo cross-domain
 ```
 Executes the full cross-domain kill chain: IAM PassRole privilege escalation &rarr; EKS Access Entry &rarr; ServiceAccount mapping &rarr; eBPF runtime shell execution &rarr; credential token read &rarr; dual-track dry-run remediation.
+
+### 6. Operate via the CLI directly
+```bash
+threatguard status
+threatguard incidents list
+threatguard incidents show <incident_id>
+threatguard workloads
+threatguard remediate <incident_id> --dry-run
+threatguard report evidence
+threatguard verify
+```
 
 ---
 
@@ -374,14 +409,14 @@ SENSITIVE RESOURCE EXPOSURE
 
 | Layer | Component | Functionality |
 | :--- | :--- | :--- |
-| **Shared Event Contract** | `correlation/models/event.py` | Normalized `UnifiedSecurityEvent` (v1.0) for both IAM findings and eBPF events |
-| **Identity-K8s Mapper** | `correlation/models/mapping.py` | Resolves IAM Roles &rarr; EKS Access Entries &rarr; ServiceAccounts &rarr; Pods |
-| **Correlation Engine** | `correlation/engine/correlation_engine.py` | Detects cross-domain kill chains and generates causal attack sequences |
-| **Unified Attack Graph** | `correlation/graph/unified_graph.py` | Heterogeneous directed graph with Mermaid visualizer and edge provenance |
-| **Dual-Track Remediation**| `correlation/models/incident.py` | Advisory dry-run remediation commands for both AWS IAM and Kubernetes |
-| **Composite Risk Scoring**| `correlation/engine/risk_evaluator.py` | Multi-factor risk formula attributing score contributions across domains |
+| **Shared Event Contract** | `src/cloudnative_threatguard/correlation/cross_domain/models/event.py` | Normalized `UnifiedSecurityEvent` (v1.0) for both IAM findings and eBPF events |
+| **Identity-K8s Mapper** | `src/cloudnative_threatguard/correlation/cross_domain/models/mapping.py` | Resolves IAM Roles &rarr; EKS Access Entries &rarr; ServiceAccounts &rarr; Pods |
+| **Correlation Engine** | `src/cloudnative_threatguard/correlation/cross_domain/engine/correlation_engine.py` | Detects cross-domain kill chains and generates causal attack sequences |
+| **Unified Attack Graph** | `src/cloudnative_threatguard/correlation/cross_domain/graph/unified_graph.py` | Heterogeneous directed graph with Mermaid visualizer and edge provenance |
+| **Dual-Track Remediation**| `src/cloudnative_threatguard/correlation/cross_domain/models/incident.py` | Advisory dry-run remediation commands for both AWS IAM and Kubernetes |
+| **Composite Risk Scoring**| `src/cloudnative_threatguard/correlation/cross_domain/engine/risk_evaluator.py` | Multi-factor risk formula attributing score contributions across domains |
 | **SOC Web Console** | `observability/dashboard/unified_dashboard.html` | Unified dashboard with Cloud Security overview, findings, and attack paths |
-| **Offline Demo** | `demo-cloud-security.py` | Deterministic demonstration requiring **zero AWS credentials** |
+| **Offline Demo** | `threatguard demo cross-domain` | Deterministic demonstration requiring **zero AWS credentials** |
 
 ---
 
