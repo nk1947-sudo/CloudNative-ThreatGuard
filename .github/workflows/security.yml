@@ -1,11 +1,14 @@
-name: "Supply Chain & Security Scans"
+name: "Security Scan"
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   static-security-analysis:
@@ -24,7 +27,7 @@ jobs:
       - name: "Hadolint Dockerfile"
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: "app/Dockerfile"
+          dockerfile: "app/secure-web-app/Dockerfile"
           failure-threshold: "error"
           ignore: "DL3008,DL3013"
 
@@ -35,9 +38,25 @@ jobs:
           scan-ref: "."
           format: "table"
           severity: "CRITICAL,HIGH"
-          exit-code: "0"
+          exit-code: "1"
+
+      - name: "Setup Python"
+        if: always()
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Install Package"
+        if: always()
+        run: pip install -e .
 
       - name: "Generate SBOM"
-        run: |
-          bash scripts/generate-sbom.sh
-          cat artifacts/reports/sample-app-sbom.json
+        if: always()
+        run: bash scripts/generate-sbom.sh
+
+      - name: "Upload SBOM"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-app-sbom
+          path: artifacts/reports/sample-app-sbom.json

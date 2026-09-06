@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   e2e-cluster-validation:
     name: "KIND Cluster Security E2E Pipeline"
@@ -17,6 +20,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: "Install Package"
+        run: pip install -e .
 
       - name: "Setup Open Policy Agent (OPA)"
         uses: open-policy-agent/setup-opa@v2
@@ -40,20 +46,16 @@ jobs:
           sudo mv ./kind /usr/local/bin/kind
 
       - name: "Setup KIND Cluster with eBPF Mounts"
-        run: |
-          bash scripts/setup-cluster.sh
+        run: bash scripts/setup-cluster.sh
 
       - name: "Install Security Stack (Gatekeeper & Tetragon)"
-        run: |
-          bash scripts/install-security-stack.sh
+        run: bash scripts/install-security-stack.sh
 
       - name: "Deploy Hardened Application"
-        run: |
-          bash scripts/deploy-app.sh
+        run: bash scripts/deploy-app.sh
 
       - name: "Execute Master Security Test Harness"
-        run: |
-          bash scripts/run-security-validation.sh
+        run: bash scripts/run-security-validation.sh
 
       - name: "Upload Evidence & Security Scorecard"
         uses: actions/upload-artifact@v4

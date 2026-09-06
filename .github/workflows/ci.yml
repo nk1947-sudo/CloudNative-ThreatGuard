@@ -1,0 +1,77 @@
+name: "CI"
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: "Install Package, Lint, and Test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Install Package (editable, with dev extras)"
+        run: pip install -e ".[dev]"
+
+      - name: "Ruff Lint"
+        run: ruff check src tests
+
+      - name: "Compile Check"
+        run: python -m compileall -q src tests
+
+      - name: "Run Unit Tests"
+        run: pytest tests/unit -q
+
+      - name: "Run Integration Tests (excluding those requiring OPA/live cluster)"
+        run: pytest tests/integration -q
+
+  policy-validation:
+    name: "Validate Rego Policies & K8s Manifests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Install Package"
+        run: pip install -e .
+
+      - name: "Setup Open Policy Agent (OPA)"
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: v0.68.0
+
+      - name: "Run OPA Rego Unit Tests"
+        run: opa test deploy/gatekeeper/src deploy/gatekeeper/tests/rego -v
+
+      - name: "Validate Admission Test Manifests via OPA"
+        run: threatguard admission validate
+
+      - name: "Setup Kubeconform"
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: "Validate Kubernetes Manifests"
+        run: |
+          kubeconform -summary -strict -kubernetes-version 1.30.0 \
+            app/secure-web-app/k8s/*.yaml \
+            deploy/kubernetes/*.yaml \
+            simulations/manifests/*.yaml

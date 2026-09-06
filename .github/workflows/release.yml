@@ -1,0 +1,47 @@
+name: "Release Build"
+
+# Builds and uploads the sdist/wheel as a workflow artifact on version tags.
+# This does NOT publish to PyPI -- no PyPI project or token exists for this
+# package. Its purpose is to verify the package actually builds and installs
+# cleanly from a clean checkout, and to give maintainers a downloadable
+# artifact for manual verification or distribution.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "Build Distribution"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Install build tooling"
+        run: pip install build
+
+      - name: "Build sdist and wheel"
+        run: python -m build
+
+      - name: "Verify the built wheel installs cleanly"
+        run: |
+          python -m venv /tmp/release-check
+          /tmp/release-check/bin/pip install dist/*.whl
+          /tmp/release-check/bin/threatguard --help
+
+      - name: "Upload Distribution Artifacts"
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudnative-threatguard-dist
+          path: dist/
