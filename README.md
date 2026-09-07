@@ -379,6 +379,7 @@ threatguard incidents list
 threatguard incidents show <incident_id>
 threatguard workloads
 threatguard remediate <incident_id> --dry-run
+threatguard remediate <incident_id> --dry-run --live-k8s  # optional: resolve Pod ownership via a live, read-only kubectl lookup (see docs/security/kubernetes-ownership-rbac.md); falls back safely if unavailable
 threatguard report evidence
 threatguard verify
 ```

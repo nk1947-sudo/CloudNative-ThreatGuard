@@ -25,6 +25,7 @@ from cloudnative_threatguard.reporting.attack_chain import AttackChainVisualizer
 from cloudnative_threatguard.reporting.incidents import IncidentManager
 from cloudnative_threatguard.reporting.recommendations import ResponseRecommendationEngine
 from cloudnative_threatguard.reporting.risk import RiskScoringEngine
+from cloudnative_threatguard.reporting.workload_resolver import KubectlOwnershipClient, resolve_workload_owner
 from cloudnative_threatguard.runtime.events import SecurityEvent
 
 
@@ -221,11 +222,21 @@ class ThreatGuardCLI:
         techniques = inc.get("techniques", [])
         severity = inc.get("severity", "HIGH")
 
+        # Live Kubernetes ownership lookup is entirely opt-in (--live-k8s):
+        # every other ThreatGuard function, including remediate without this
+        # flag, works with no kubeconfig at all.
+        kubernetes_client = KubectlOwnershipClient() if getattr(args, "live_k8s", False) else None
+        if kubernetes_client is not None:
+            probe = resolve_workload_owner(namespace, pod_name, kubernetes_client=kubernetes_client)
+            if probe.live_lookup_status == "failed":
+                print("[!] Live Kubernetes ownership lookup unavailable; using safe fallback resolution.")
+
         recs = self.recommendation_engine.generate_recommendations(
             namespace=namespace,
             pod_name=pod_name,
             techniques=techniques,
-            severity=severity
+            severity=severity,
+            kubernetes_client=kubernetes_client,
         )
 
         print("============================================================")
@@ -360,6 +371,11 @@ def build_parser() -> argparse.ArgumentParser:
     rem_parser.add_argument("incident_id", help="Incident ID")
     rem_parser.add_argument("--dry-run", action="store_true", default=True, help="Print dry-run commands (default: True)")
     rem_parser.add_argument("--apply", action="store_true", help="Execute commands on cluster (requires explicit flag)")
+    rem_parser.add_argument(
+        "--live-k8s", action="store_true",
+        help="Resolve Pod ownership via a live 'kubectl' lookup (read-only) instead of naming-pattern inference alone. "
+             "Optional; requires a working kubeconfig. Falls back safely if the lookup fails.",
+    )
 
     rep_parser = subparsers.add_parser("report", help="Export audit reports and scorecards")
     rep_sub = rep_parser.add_subparsers(dest="rep_command", help="Report type")

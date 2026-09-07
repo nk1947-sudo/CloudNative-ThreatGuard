@@ -10,7 +10,8 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-from cloudnative_threatguard.cli.main import ThreatGuardCLI
+from cloudnative_threatguard.cli.main import ThreatGuardCLI, build_parser
+from cloudnative_threatguard.reporting.workload_resolver import KubectlOwnershipClient
 
 
 class TestThreatGuardCLI(unittest.TestCase):
@@ -112,6 +113,62 @@ class TestThreatGuardCLI(unittest.TestCase):
         output = mock_stdout.getvalue()
         self.assertIn("REMEDIATION PLAYBOOK", output)
         self.assertIn("DRY-RUN MODE", output)
+
+    @patch("sys.stdout", new_callable=StringIO)
+    def test_remediate_command_without_live_k8s_flag_never_touches_kubectl(self, mock_stdout):
+        """
+        The `live_k8s` attribute is entirely absent from this Args (mirrors
+        every caller of cmd_remediate before --live-k8s existed) -- the
+        default (offline) behavior must be unaffected and no live lookup
+        attempted.
+        """
+        class Args:
+            incident_id = "#TG-TEST01"
+            dry_run = True
+            apply = False
+        with patch.object(KubectlOwnershipClient, "get_owner_references") as mock_lookup:
+            ret = self.cli.cmd_remediate(Args())
+        self.assertEqual(ret, 0)
+        mock_lookup.assert_not_called()
+        self.assertNotIn("Live Kubernetes ownership lookup unavailable", mock_stdout.getvalue())
+
+    @patch("sys.stdout", new_callable=StringIO)
+    def test_remediate_command_with_live_k8s_reports_unavailable_fallback(self, mock_stdout):
+        class Args:
+            incident_id = "#TG-TEST01"
+            dry_run = True
+            apply = False
+            live_k8s = True
+        with patch.object(KubectlOwnershipClient, "get_owner_references", return_value=None):
+            ret = self.cli.cmd_remediate(Args())
+        self.assertEqual(ret, 0)
+        output = mock_stdout.getvalue()
+        self.assertIn("Live Kubernetes ownership lookup unavailable; using safe fallback resolution.", output)
+        self.assertIn("REMEDIATION PLAYBOOK", output)
+
+    @patch("sys.stdout", new_callable=StringIO)
+    def test_remediate_command_with_live_k8s_resolves_owner_when_available(self, mock_stdout):
+        class Args:
+            incident_id = "#TG-TEST01"
+            dry_run = True
+            apply = False
+            live_k8s = True
+        with patch.object(
+            KubectlOwnershipClient, "get_owner_references",
+            return_value=[{"kind": "Deployment", "name": "target"}],
+        ):
+            ret = self.cli.cmd_remediate(Args())
+        self.assertEqual(ret, 0)
+        output = mock_stdout.getvalue()
+        self.assertNotIn("Live Kubernetes ownership lookup unavailable", output)
+        self.assertIn("deployment/target", output)
+
+    def test_remediate_subparser_live_k8s_flag_is_opt_in(self):
+        parser = build_parser()
+        default_args = parser.parse_args(["remediate", "#TG-TEST01"])
+        self.assertFalse(default_args.live_k8s)
+        flagged_args = parser.parse_args(["remediate", "#TG-TEST01", "--live-k8s"])
+        self.assertTrue(flagged_args.live_k8s)
 
     def test_report_incidents_export(self):
         output_file = os.path.join(self.temp_dir.name, "report.json")

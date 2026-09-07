@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
-from .workload_resolver import resolve_workload_owner
+from .workload_resolver import KubernetesOwnershipClient, resolve_workload_owner
 
 
 class RecommendationPriority(str, Enum):
@@ -60,6 +60,7 @@ class ResponseRecommendationEngine:
         node_name: str = "threatguard-local-control-plane",
         container_name: str = "app",
         owner_references: list[dict[str, Any]] | None = None,
+        kubernetes_client: KubernetesOwnershipClient | None = None,
     ) -> list[ResponseRecommendation]:
         recs: list[ResponseRecommendation] = []
         rec_counter = 1
@@ -68,7 +69,9 @@ class ResponseRecommendationEngine:
         # recommendation that targets a Deployment/StatefulSet/DaemonSet --
         # a Pod name (e.g. "web-app-7c9d8f6d7b-x2abc") is not that resource's
         # name (e.g. "web-app") and must never be substituted for it directly.
-        workload = resolve_workload_owner(namespace, pod_name, owner_references)
+        # `kubernetes_client` is optional dependency injection: None (the
+        # default) keeps this fully offline, exactly as before.
+        workload = resolve_workload_owner(namespace, pod_name, owner_references, kubernetes_client)
 
         # 1. Forensic Acquisition (Always recommended first before modifying state)
         recs.append(ResponseRecommendation(
