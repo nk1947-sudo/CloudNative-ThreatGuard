@@ -90,31 +90,81 @@ class ResponseRecommendationEngine:
 
         # 2. Network Quarantine (T1059 Shell Execution, T1071 C2, T1105 Ingress Transfer, T1496 Mining)
         if any(t in techniques for t in ["T1059", "T1059.004", "T1071", "T1071.001", "T1105", "T1496", "T1046"]):
-            netpol_yaml = (
-                f"apiVersion: networking.k8s.io/v1\n"
-                f"kind: NetworkPolicy\n"
-                f"metadata:\n"
-                f"  name: tg-quarantine-{pod_name}\n"
-                f"  namespace: {namespace}\n"
-                f"spec:\n"
-                f"  podSelector:\n"
-                f"    matchLabels:\n"
-                f"      app: {pod_name}\n"
-                f"  policyTypes:\n"
-                f"  - Ingress\n"
-                f"  - Egress"
-            )
-            recs.append(ResponseRecommendation(
-                recommendation_id=f"REC-{rec_counter:02d}-NET-QUARANTINE",
-                title=f"Isolate Workload {pod_name} via Default-Deny NetworkPolicy",
-                priority=RecommendationPriority.CRITICAL.value if severity == "CRITICAL" else RecommendationPriority.HIGH.value,
-                category=ActionCategory.QUARANTINE.value,
-                rationale="Cuts off active reverse shells, C2 beacons, and lateral movement probes immediately.",
-                dry_run_command=f"cat << 'EOF' | kubectl apply --dry-run=client -f -\n{netpol_yaml}\nEOF",
-                execution_command=f"cat << 'EOF' | kubectl apply -f -\n{netpol_yaml}\nEOF",
-                blast_radius=f"Restricts inbound and outbound network connectivity specifically for pod {pod_name}.",
-                reversibility=f"Fully reversible: run 'kubectl delete networkpolicy tg-quarantine-{pod_name} -n {namespace}'"
-            ))
+            if not workload.requires_manual_remediation and workload.owner_name:
+                # Selecting by the resolved workload name (shared across every
+                # replica's pod template) rather than the individual pod's own
+                # name -- a Pod's "app" label is set once on the controller's
+                # pod template, never to that pod's own unique instance name,
+                # so a selector using the raw pod name would silently match
+                # zero pods and quarantine nothing. Isolating the whole
+                # workload is also the safer containment action: a compromise
+                # is normally at the image/application level, not specific to
+                # one replica.
+                quarantine_selector_label = workload.owner_name
+                netpol_yaml = (
+                    f"apiVersion: networking.k8s.io/v1\n"
+                    f"kind: NetworkPolicy\n"
+                    f"metadata:\n"
+                    f"  name: tg-quarantine-{quarantine_selector_label}\n"
+                    f"  namespace: {namespace}\n"
+                    f"spec:\n"
+                    f"  podSelector:\n"
+                    f"    matchLabels:\n"
+                    f"      app: {quarantine_selector_label}\n"
+                    f"  policyTypes:\n"
+                    f"  - Ingress\n"
+                    f"  - Egress"
+                )
+                recs.append(ResponseRecommendation(
+                    recommendation_id=f"REC-{rec_counter:02d}-NET-QUARANTINE",
+                    title=f"Isolate {workload.owner_kind} {quarantine_selector_label} via Default-Deny NetworkPolicy",
+                    priority=RecommendationPriority.CRITICAL.value if severity == "CRITICAL" else RecommendationPriority.HIGH.value,
+                    category=ActionCategory.QUARANTINE.value,
+                    rationale="Cuts off active reverse shells, C2 beacons, and lateral movement probes immediately.",
+                    dry_run_command=f"cat << 'EOF' | kubectl apply --dry-run=client -f -\n{netpol_yaml}\nEOF",
+                    execution_command=f"cat << 'EOF' | kubectl apply -f -\n{netpol_yaml}\nEOF",
+                    blast_radius=f"Restricts inbound and outbound network connectivity for every pod of {workload.owner_kind.lower() if workload.owner_kind else 'workload'} {quarantine_selector_label} (all replicas), assuming its pods carry the conventional 'app: {quarantine_selector_label}' label.",
+                    reversibility=f"Fully reversible: run 'kubectl delete networkpolicy tg-quarantine-{quarantine_selector_label} -n {namespace}'"
+                ))
+            else:
+                # No owner could be resolved: a selector built from the pod
+                # name alone would not reliably match anything (NetworkPolicy
+                # selects by label, not by pod name), so don't emit one.
+                # Label the pod directly first, then quarantine that label --
+                # this is correct and safe, just not fully automatic.
+                recs.append(ResponseRecommendation(
+                    recommendation_id=f"REC-{rec_counter:02d}-NET-QUARANTINE-MANUAL",
+                    title=f"Manually Isolate Pod {pod_name} via Default-Deny NetworkPolicy",
+                    priority=RecommendationPriority.CRITICAL.value if severity == "CRITICAL" else RecommendationPriority.HIGH.value,
+                    category=ActionCategory.MANUAL_REVIEW.value,
+                    rationale=(
+                        "Cuts off active reverse shells, C2 beacons, and lateral movement probes, but the "
+                        f"owning workload could not be safely determined ({workload.manual_reason}), so no "
+                        "existing label can be trusted to build a NetworkPolicy selector. Label the pod "
+                        "directly first, then isolate that label."
+                    ),
+                    dry_run_command=f"kubectl label pod {pod_name} -n {namespace} security.threatguard.io/quarantine=true --overwrite --dry-run=client",
+                    execution_command=(
+                        f"kubectl label pod {pod_name} -n {namespace} security.threatguard.io/quarantine=true --overwrite && "
+                        f"cat << 'EOF' | kubectl apply -f -\n"
+                        f"apiVersion: networking.k8s.io/v1\n"
+                        f"kind: NetworkPolicy\n"
+                        f"metadata:\n"
+                        f"  name: tg-quarantine-{pod_name}\n"
+                        f"  namespace: {namespace}\n"
+                        f"spec:\n"
+                        f"  podSelector:\n"
+                        f"    matchLabels:\n"
+                        f"      security.threatguard.io/quarantine: \"true\"\n"
+                        f"  policyTypes:\n"
+                        f"  - Ingress\n"
+                        f"  - Egress\n"
+                        f"EOF"
+                    ),
+                    blast_radius=f"Once labeled and applied, restricts inbound and outbound network connectivity specifically for pod {pod_name}.",
+                    reversibility=f"Fully reversible: run 'kubectl delete networkpolicy tg-quarantine-{pod_name} -n {namespace}' and remove the label.",
+                    requires_manual_review=True,
+                ))
             rec_counter += 1
 
         # 3. Credential Rotation (T1552.007 SA Token or /etc/shadow access)

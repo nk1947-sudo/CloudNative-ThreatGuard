@@ -97,6 +97,39 @@ class TestResponseRecommendations(unittest.TestCase):
         self.assertIn("statefulset/cache", drain_rec.execution_command)
         self.assertNotIn("cache-2", drain_rec.execution_command)
 
+    def test_network_quarantine_selects_by_workload_name_not_pod_name(self):
+        """
+        Regression guard: a NetworkPolicy podSelector matches pods by label,
+        and a pod is never labeled with its own unique instance name -- only
+        with the workload's shared label (e.g. 'app: payment-service' on
+        every replica). A selector built from the raw pod name would
+        silently match zero pods and quarantine nothing.
+        """
+        recs = self.engine.generate_recommendations(
+            namespace="threatguard",
+            pod_name="payment-service-7c9d8f6d7b-x2abc",
+            techniques=["T1059.004"],
+        )
+        quarantine_rec = next(r for r in recs if r.category == ActionCategory.QUARANTINE.value)
+        self.assertFalse(quarantine_rec.requires_manual_review)
+        self.assertIn("app: payment-service\n", quarantine_rec.execution_command)
+        self.assertNotIn("app: payment-service-7c9d8f6d7b-x2abc", quarantine_rec.execution_command)
+        self.assertIn("tg-quarantine-payment-service", quarantine_rec.execution_command)
+
+    def test_network_quarantine_falls_back_to_manual_label_then_select_when_owner_unresolvable(self):
+        recs = self.engine.generate_recommendations(
+            namespace="threatguard",
+            pod_name="payment-service-pod",  # does not match any owner naming pattern
+            techniques=["T1059.004"],
+        )
+        quarantine_rec = next(r for r in recs if "NET-QUARANTINE" in r.recommendation_id)
+        self.assertTrue(quarantine_rec.requires_manual_review)
+        self.assertEqual(quarantine_rec.category, ActionCategory.MANUAL_REVIEW.value)
+        # Must label the pod with a real, verifiable identifier first, then
+        # select on that label -- never a selector guessed from the pod name.
+        self.assertIn("kubectl label pod payment-service-pod", quarantine_rec.execution_command)
+        self.assertIn("security.threatguard.io/quarantine", quarantine_rec.execution_command)
+
     def test_container_escape_node_cordon(self):
         recs = self.engine.generate_recommendations(
             namespace="threatguard",
