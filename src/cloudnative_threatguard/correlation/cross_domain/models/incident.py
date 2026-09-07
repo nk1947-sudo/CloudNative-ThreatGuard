@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CorrelatedCluster
 
-from .event import Severity
+from .event import EventSource, EventType, Severity, UnifiedSecurityEvent
 
 
 class IncidentStatus(str, Enum):
@@ -36,6 +36,36 @@ class RemediationProposal(BaseModel):
     dry_run_command: str
     rationale: str
     is_dry_run_only: bool = True
+
+
+class ContributingFinding(BaseModel):
+    """
+    A single source event/finding that contributed to an incident, preserved
+    with its own severity so it survives correlation into an incident whose
+    overall severity (``CrossDomainIncident.severity``) is a separate,
+    aggregated judgement -- not every contributing finding shares it.
+    """
+    model_config = ConfigDict(populate_by_name=True)
+
+    event_id: str
+    source: EventSource
+    event_type: EventType
+    severity: Severity
+    detection_rule: str | None = None
+    technique: str | None = None
+    evidence: dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def from_event(cls, event: UnifiedSecurityEvent) -> "ContributingFinding":
+        return cls(
+            event_id=event.event_id,
+            source=event.source,
+            event_type=event.event_type,
+            severity=event.severity,
+            detection_rule=event.detection_rule,
+            technique=event.evidence.get("mitre_technique"),
+            evidence=event.evidence,
+        )
 
 
 class CrossDomainIncident(BaseModel):
@@ -61,6 +91,14 @@ class CrossDomainIncident(BaseModel):
         description="IDs of all supporting UnifiedSecurityEvents"
     )
     evidence_summary: dict[str, Any] = Field(default_factory=dict)
+    contributing_findings: list[ContributingFinding] = Field(
+        default_factory=list,
+        description=(
+            "Each source event's own severity/source/type, preserved through "
+            "correlation. Additive to evidence_summary's bare counts -- does "
+            "not replace or alter the incident-level `severity` above."
+        ),
+    )
     cloud_context: dict[str, Any] = Field(default_factory=dict)
     k8s_context: dict[str, Any] = Field(default_factory=dict)
     remediation_proposals: list[RemediationProposal] = Field(default_factory=list)
@@ -109,8 +147,10 @@ class UnifiedIncidentManager:
                     if clean_act not in chain_steps:
                         chain_steps.append(clean_act)
 
-        # Source event IDs
-        ev_ids = [ev.event_id for ev in cluster.iam_events + cluster.runtime_events + cluster.admission_events]
+        # Source event IDs and per-event findings (severity preserved individually).
+        source_events = cluster.iam_events + cluster.runtime_events + cluster.admission_events
+        ev_ids = [ev.event_id for ev in source_events]
+        findings = [ContributingFinding.from_event(ev) for ev in source_events]
 
         # Cloud and K8s contexts
         cloud_ctx = {}
@@ -190,6 +230,7 @@ class UnifiedIncidentManager:
                 "runtime_events_count": len(cluster.runtime_events),
                 "admission_events_count": len(cluster.admission_events),
             },
+            contributing_findings=findings,
             cloud_context=cloud_ctx,
             k8s_context=k8s_ctx,
             remediation_proposals=remediations,

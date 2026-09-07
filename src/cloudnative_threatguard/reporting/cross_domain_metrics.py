@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from cloudnative_threatguard.correlation.cross_domain.models.event import Severity
+from cloudnative_threatguard.correlation.cross_domain.models.event import EventSource, EventType, Severity
 from cloudnative_threatguard.correlation.cross_domain.models.incident import (
     CrossDomainIncident,
     IncidentStatus,
@@ -87,13 +87,19 @@ def compute_snapshot(incidents: list[CrossDomainIncident]) -> CrossDomainMetrics
     }
     snapshot.sensitive_resources_exposed = len(resources)
 
+    # Bucketed by each *source finding's own* severity -- not the incident's
+    # overall (correlated) severity, which is a separate aggregated judgement
+    # and may legitimately differ from any single contributing finding.
+    # Incidents persisted before `contributing_findings` existed simply have
+    # an empty list here and honestly contribute nothing, rather than falling
+    # back to the old incident-level bucketing (which would reintroduce the
+    # exact bug this replaces).
     for i in incidents:
-        sev = i.severity.value
-        iam_count = i.evidence_summary.get("iam_events_count", 0)
-        runtime_count = i.evidence_summary.get("runtime_events_count", 0)
-        if iam_count > 0:
-            snapshot.iam_risks_by_severity[sev] = snapshot.iam_risks_by_severity.get(sev, 0) + iam_count
-        if runtime_count > 0:
-            snapshot.runtime_threats_by_severity[sev] = snapshot.runtime_threats_by_severity.get(sev, 0) + runtime_count
+        for finding in i.contributing_findings:
+            sev = finding.severity.value if hasattr(finding.severity, "value") else finding.severity
+            if finding.source == EventSource.CLOUDGRAPHGUARD:
+                snapshot.iam_risks_by_severity[sev] = snapshot.iam_risks_by_severity.get(sev, 0) + 1
+            elif finding.source == EventSource.THREATGUARD and finding.event_type != EventType.ADMISSION_VIOLATION:
+                snapshot.runtime_threats_by_severity[sev] = snapshot.runtime_threats_by_severity.get(sev, 0) + 1
 
     return snapshot

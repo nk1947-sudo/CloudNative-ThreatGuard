@@ -5,13 +5,18 @@ state, not hardcoded -- the exact bug this module fixes.
 
 import unittest
 
-from cloudnative_threatguard.correlation.cross_domain.models.event import Severity
+from cloudnative_threatguard.correlation.cross_domain.models.event import EventSource, EventType, Severity
 from cloudnative_threatguard.correlation.cross_domain.models.incident import (
+    ContributingFinding,
     CrossDomainIncident,
     IncidentStatus,
     RemediationProposal,
 )
 from cloudnative_threatguard.reporting.cross_domain_metrics import compute_snapshot
+
+
+def _make_finding(source, event_type, severity, event_id="USE-TEST") -> ContributingFinding:
+    return ContributingFinding(event_id=event_id, source=source, event_type=event_type, severity=severity)
 
 
 def _make_incident(
@@ -23,6 +28,7 @@ def _make_incident(
     principal=None,
     workload=None,
     remediation_targets=None,
+    contributing_findings=None,
 ) -> CrossDomainIncident:
     cloud_context = {"principal": principal} if principal else {}
     k8s_context = {"workload": workload} if workload else {}
@@ -37,6 +43,15 @@ def _make_incident(
         )
         for target in (remediation_targets or [])
     ]
+    if contributing_findings is None:
+        # Default: every source finding mirrors the incident's own severity,
+        # matching the pre-fix behavior that callers not exercising per-event
+        # severity explicitly still expect.
+        contributing_findings = (
+            [_make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, severity, f"USE-IAM-{i}") for i in range(iam_events)]
+            + [_make_finding(EventSource.THREATGUARD, EventType.RUNTIME_DETECTION, severity, f"USE-RT-{i}") for i in range(runtime_events)]
+            + [_make_finding(EventSource.THREATGUARD, EventType.ADMISSION_VIOLATION, severity, f"USE-ADM-{i}") for i in range(admission_events)]
+        )
     return CrossDomainIncident(
         title="Test Incident",
         severity=severity,
@@ -47,6 +62,7 @@ def _make_incident(
             "runtime_events_count": runtime_events,
             "admission_events_count": admission_events,
         },
+        contributing_findings=contributing_findings,
         cloud_context=cloud_context,
         k8s_context=k8s_context,
         remediation_proposals=remediation_proposals,
@@ -135,6 +151,108 @@ class TestCrossDomainMetricsSnapshot(unittest.TestCase):
         incident = _make_incident(iam_events=1, runtime_events=0, admission_events=1)
         snapshot = compute_snapshot([incident])
         self.assertEqual(snapshot.exploitable_attack_paths, 1)
+
+
+class TestPerFindingSeverityGranularity(unittest.TestCase):
+    """
+    Regression guards for the fix that buckets `iam_risks_by_severity` /
+    `runtime_threats_by_severity` by each *source finding's own* severity,
+    not the incident's overall (correlated) severity.
+    """
+
+    def test_source_finding_severity_is_preserved_independently_of_incident_severity(self):
+        """
+        Incident severity is HIGH, but its three IAM findings are
+        LOW/MEDIUM/HIGH individually. Before this fix, all three would have
+        been counted under "high" because bucketing used the incident's
+        aggregated severity instead of each finding's own.
+        """
+        incident = _make_incident(
+            severity=Severity.HIGH,
+            iam_events=0,
+            runtime_events=0,
+            contributing_findings=[
+                _make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, Severity.LOW, "USE-1"),
+                _make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, Severity.MEDIUM, "USE-2"),
+                _make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, Severity.HIGH, "USE-3"),
+            ],
+        )
+        snapshot = compute_snapshot([incident])
+        self.assertEqual(snapshot.iam_risks_by_severity["low"], 1)
+        self.assertEqual(snapshot.iam_risks_by_severity["medium"], 1)
+        self.assertEqual(snapshot.iam_risks_by_severity["high"], 1)
+        self.assertEqual(snapshot.iam_risks_by_severity["critical"], 0)
+
+    def test_multiple_source_events_across_both_domains_bucket_independently(self):
+        incident = _make_incident(
+            severity=Severity.CRITICAL,
+            iam_events=0,
+            runtime_events=0,
+            contributing_findings=[
+                _make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, Severity.HIGH, "USE-1"),
+                _make_finding(EventSource.CLOUDGRAPHGUARD, EventType.IAM_RISK, Severity.HIGH, "USE-2"),
+                _make_finding(EventSource.THREATGUARD, EventType.RUNTIME_DETECTION, Severity.CRITICAL, "USE-3"),
+                _make_finding(EventSource.THREATGUARD, EventType.RUNTIME_DETECTION, Severity.LOW, "USE-4"),
+            ],
+        )
+        snapshot = compute_snapshot([incident])
+        self.assertEqual(snapshot.iam_risks_by_severity["high"], 2)
+        self.assertEqual(snapshot.runtime_threats_by_severity["critical"], 1)
+        self.assertEqual(snapshot.runtime_threats_by_severity["low"], 1)
+
+    def test_admission_domain_findings_are_excluded_from_iam_and_runtime_buckets(self):
+        """
+        Admission-violation findings (Gatekeeper policy denials) are a third
+        domain, tracked separately via evidence_summary's admission count --
+        they must not silently inflate either the IAM or the Kubernetes
+        runtime severity metric.
+        """
+        incident = _make_incident(
+            severity=Severity.HIGH,
+            iam_events=0,
+            runtime_events=0,
+            admission_events=0,
+            contributing_findings=[
+                _make_finding(EventSource.THREATGUARD, EventType.ADMISSION_VIOLATION, Severity.CRITICAL, "USE-1"),
+            ],
+        )
+        snapshot = compute_snapshot([incident])
+        self.assertEqual(snapshot.iam_risks_by_severity["critical"], 0)
+        self.assertEqual(snapshot.runtime_threats_by_severity["critical"], 0)
+
+    def test_incident_with_no_contributing_findings_contributes_zero_to_severity_metrics(self):
+        """
+        Backward compatibility: an incident persisted before this field
+        existed (or one with a legitimately empty findings list) must not
+        crash the exporter and must not fall back to bucketing by
+        incident-level severity -- that would silently reintroduce the bug.
+        """
+        incident = _make_incident(severity=Severity.CRITICAL, iam_events=2, runtime_events=1, contributing_findings=[])
+        snapshot = compute_snapshot([incident])
+        self.assertEqual(snapshot.iam_risks_by_severity["critical"], 0)
+        self.assertEqual(snapshot.runtime_threats_by_severity["critical"], 0)
+        # The rest of the snapshot is still derived normally from evidence_summary.
+        self.assertEqual(snapshot.total_correlations, 1)
+
+    def test_unknown_finding_severity_is_counted_defensively_not_dropped_or_crashed(self):
+        """
+        Severity is normally a validated enum, so this can only arise from a
+        finding built outside normal validation (e.g. a future looser
+        producer). The snapshot must not crash, per the same defensive
+        dict.get(..., 0) semantics already used for every other bucket here.
+        """
+        odd_finding = ContributingFinding.model_construct(
+            event_id="USE-ODD",
+            source=EventSource.CLOUDGRAPHGUARD,
+            event_type=EventType.IAM_RISK,
+            severity="unknown",
+        )
+        incident = _make_incident(
+            severity=Severity.HIGH, iam_events=0, runtime_events=0, contributing_findings=[odd_finding]
+        )
+        snapshot = compute_snapshot([incident])
+        self.assertEqual(snapshot.iam_risks_by_severity.get("unknown"), 1)
+        self.assertEqual(snapshot.iam_risks_by_severity["high"], 0)
 
 
 if __name__ == "__main__":

@@ -46,11 +46,14 @@ class TestCrossDomainMetricsPipeline(unittest.TestCase):
         self.assertIn("threatguard_cross_domain_correlations_total 1", after_text)
         self.assertIn("threatguard_open_incidents_total 1", after_text)
         self.assertIn("threatguard_exploitable_attack_paths_total 1", after_text)
-        # The demo's incident is CRITICAL severity with both IAM and runtime
-        # evidence -- it must show up under "critical", not a hardcoded number
-        # under some other label.
+        # The demo's incident as a whole is CRITICAL severity, but its three
+        # runtime findings carry their own individual severities (shell exec
+        # = HIGH, token access = CRITICAL, egress = HIGH) -- they must show up
+        # split 2/1 by their own severity, not all three collapsed under the
+        # incident's CRITICAL severity.
         self.assertIn('threatguard_cloud_iam_risks_total{severity="critical"} 1', after_text)
-        self.assertIn('threatguard_cloud_runtime_threats_total{severity="critical"} 3', after_text)
+        self.assertIn('threatguard_cloud_runtime_threats_total{severity="high"} 2', after_text)
+        self.assertIn('threatguard_cloud_runtime_threats_total{severity="critical"} 1', after_text)
 
     def test_metrics_accumulate_across_repeated_demo_runs(self):
         with tempfile.TemporaryDirectory() as tmp:

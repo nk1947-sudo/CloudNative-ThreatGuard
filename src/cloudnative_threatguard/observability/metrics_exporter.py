@@ -101,12 +101,12 @@ class MetricsHandler(BaseHTTPRequestHandler):
         lines.append("# TYPE threatguard_cross_domain_correlations_total counter")
         lines.append(f"threatguard_cross_domain_correlations_total {snapshot.total_correlations}")
 
-        lines.append("# HELP threatguard_cloud_iam_risks_total Cloud IAM security findings contributing to incidents, by incident severity")
+        lines.append("# HELP threatguard_cloud_iam_risks_total Cloud IAM security findings contributing to incidents, by each finding's own severity")
         lines.append("# TYPE threatguard_cloud_iam_risks_total gauge")
         for sev, count in snapshot.iam_risks_by_severity.items():
             lines.append(f'threatguard_cloud_iam_risks_total{{severity="{sev}"}} {count}')
 
-        lines.append("# HELP threatguard_cloud_runtime_threats_total Kubernetes runtime threats contributing to incidents, by incident severity")
+        lines.append("# HELP threatguard_cloud_runtime_threats_total Kubernetes runtime threats contributing to incidents, by each finding's own severity")
         lines.append("# TYPE threatguard_cloud_runtime_threats_total gauge")
         for sev, count in snapshot.runtime_threats_by_severity.items():
             lines.append(f'threatguard_cloud_runtime_threats_total{{severity="{sev}"}} {count}')

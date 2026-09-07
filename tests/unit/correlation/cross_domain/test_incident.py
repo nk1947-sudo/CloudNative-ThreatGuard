@@ -97,6 +97,19 @@ class TestUnifiedIncident(unittest.TestCase):
         self.assertIn("CLOUD_IAM", domains)
         self.assertIn("KUBERNETES_RUNTIME", domains)
 
+        # Regression guard: each source finding's own severity must survive
+        # correlation even though it differs from the incident's overall
+        # (aggregated) severity -- the IAM event here is HIGH, the runtime
+        # event is CRITICAL, and the incident as a whole is CRITICAL.
+        self.assertEqual(len(incident.contributing_findings), 2)
+        iam_finding = next(f for f in incident.contributing_findings if f.source == EventSource.CLOUDGRAPHGUARD)
+        runtime_finding = next(f for f in incident.contributing_findings if f.source == EventSource.THREATGUARD)
+        self.assertEqual(iam_finding.severity, Severity.HIGH)
+        self.assertEqual(iam_finding.event_type, EventType.IAM_RISK)
+        self.assertEqual(runtime_finding.severity, Severity.CRITICAL)
+        self.assertEqual(runtime_finding.event_type, EventType.RUNTIME_DETECTION)
+        self.assertEqual(incident.severity, Severity.CRITICAL)
+
         # All remediations must be dry-run
         for r in incident.remediation_proposals:
             self.assertTrue(r.is_dry_run_only)
@@ -173,6 +186,11 @@ class TestUnifiedIncidentManagerPersistence(unittest.TestCase):
         self.assertEqual(reloaded_incidents[0].incident_id, original.incident_id)
         self.assertEqual(reloaded_incidents[0].severity, original.severity)
         self.assertEqual(reloaded_incidents[0].evidence_summary, original.evidence_summary)
+        self.assertEqual(len(reloaded_incidents[0].contributing_findings), len(original.contributing_findings))
+        self.assertEqual(
+            [f.severity for f in reloaded_incidents[0].contributing_findings],
+            [f.severity for f in original.contributing_findings],
+        )
 
     def test_load_missing_file_returns_empty_manager_not_an_error(self):
         manager = UnifiedIncidentManager.load("/nonexistent/path/incidents.json")
