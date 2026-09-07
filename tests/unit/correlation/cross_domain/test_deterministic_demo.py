@@ -2,8 +2,9 @@
 Unit tests for deterministic cross-domain cloud security demo.
 """
 
-import unittest
 import os
+import unittest
+
 from cloudnative_threatguard.config import settings
 from cloudnative_threatguard.correlation.cross_domain.demo.deterministic_demo import build_demo_scenario
 

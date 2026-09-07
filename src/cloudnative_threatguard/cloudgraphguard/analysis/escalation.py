@@ -3,10 +3,9 @@ Privilege Escalation Analyzer for AWS IAM.
 Detects well-known AWS IAM privilege escalation vectors (Rhino Security / Bishop Fox taxonomy).
 """
 
-from typing import List
 
+from cloudnative_threatguard.cloudgraphguard.models.findings import FindingType, IAMFinding, PrivilegeEscalationVector
 from cloudnative_threatguard.cloudgraphguard.models.iam import IAMPrincipal
-from cloudnative_threatguard.cloudgraphguard.models.findings import IAMFinding, FindingType, PrivilegeEscalationVector
 
 
 class PrivilegeEscalationDetector:
@@ -26,8 +25,8 @@ class PrivilegeEscalationDetector:
         PrivilegeEscalationVector.ASSUME_ROLE: ["sts:AssumeRole"],
     }
 
-    def analyze_principal(self, principal: IAMPrincipal) -> List[IAMFinding]:
-        findings: List[IAMFinding] = []
+    def analyze_principal(self, principal: IAMPrincipal) -> list[IAMFinding]:
+        findings: list[IAMFinding] = []
         all_actions = set()
 
         for policy in principal.attached_policies + principal.inline_policies:

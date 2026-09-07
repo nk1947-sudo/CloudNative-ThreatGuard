@@ -4,6 +4,7 @@ Validates JSON graph construction, Mermaid flowchart output, ASCII diagrams, and
 """
 
 import unittest
+
 from cloudnative_threatguard.reporting.attack_chain import AttackChainVisualizer
 
 

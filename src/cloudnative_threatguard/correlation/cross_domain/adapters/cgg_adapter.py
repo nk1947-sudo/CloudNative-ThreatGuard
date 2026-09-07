@@ -3,16 +3,16 @@ CloudGraphGuard Event Adapter.
 Converts IAM findings and attack path detections into normalized UnifiedSecurityEvents.
 """
 
-from typing import Union, Dict, Any, List
+from typing import Any
 
+from cloudnative_threatguard.cloudgraphguard.models.findings import IAMFinding
 from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
+    CloudProvider,
     EventSource,
     EventType,
-    CloudProvider,
     Severity,
+    UnifiedSecurityEvent,
 )
-from cloudnative_threatguard.cloudgraphguard.models.findings import IAMFinding, FindingType
 
 
 class CloudGraphGuardAdapter:
@@ -21,7 +21,7 @@ class CloudGraphGuardAdapter:
     """
 
     @classmethod
-    def to_unified_event(cls, finding: Union[IAMFinding, Dict[str, Any]]) -> UnifiedSecurityEvent:
+    def to_unified_event(cls, finding: IAMFinding | dict[str, Any]) -> UnifiedSecurityEvent:
         if isinstance(finding, dict):
             finding_obj = IAMFinding(**finding)
         else:
@@ -76,5 +76,5 @@ class CloudGraphGuardAdapter:
         )
 
     @classmethod
-    def batch_to_unified_events(cls, findings: List[Union[IAMFinding, Dict[str, Any]]]) -> List[UnifiedSecurityEvent]:
+    def batch_to_unified_events(cls, findings: list[IAMFinding | dict[str, Any]]) -> list[UnifiedSecurityEvent]:
         return [cls.to_unified_event(f) for f in findings]

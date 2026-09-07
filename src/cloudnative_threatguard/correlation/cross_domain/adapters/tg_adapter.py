@@ -4,15 +4,15 @@ Converts ThreatGuard admission violations, runtime eBPF detections,
 and attack simulations into normalized UnifiedSecurityEvents.
 """
 
-from typing import Union, Dict, Any, List, Optional
 import re
+from typing import Any
 
 from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
+    CloudProvider,
     EventSource,
     EventType,
-    CloudProvider,
     Severity,
+    UnifiedSecurityEvent,
 )
 from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType
 
@@ -47,7 +47,7 @@ class ThreatGuardAdapter:
     }
 
     @staticmethod
-    def _infer_workload_name(pod_name: Optional[str], metadata: Dict[str, Any]) -> Optional[str]:
+    def _infer_workload_name(pod_name: str | None, metadata: dict[str, Any]) -> str | None:
         if not pod_name and not metadata:
             return None
         if "workload" in metadata:
@@ -60,7 +60,7 @@ class ThreatGuardAdapter:
         return None
 
     @classmethod
-    def to_unified_event(cls, event: Union[SecurityEvent, Dict[str, Any]]) -> UnifiedSecurityEvent:
+    def to_unified_event(cls, event: SecurityEvent | dict[str, Any]) -> UnifiedSecurityEvent:
         if isinstance(event, dict):
             event_obj = SecurityEvent.from_dict(event)
         else:
@@ -81,7 +81,7 @@ class ThreatGuardAdapter:
         workload = cls._infer_workload_name(event_obj.pod, event_obj.metadata)
 
         # Compile evidence dictionary
-        evidence: Dict[str, Any] = dict(event_obj.metadata)
+        evidence: dict[str, Any] = dict(event_obj.metadata)
         if event_obj.process:
             evidence["process"] = event_obj.process
         if event_obj.parent_process:
@@ -137,5 +137,5 @@ class ThreatGuardAdapter:
         )
 
     @classmethod
-    def batch_to_unified_events(cls, events: List[Union[SecurityEvent, Dict[str, Any]]]) -> List[UnifiedSecurityEvent]:
+    def batch_to_unified_events(cls, events: list[SecurityEvent | dict[str, Any]]) -> list[UnifiedSecurityEvent]:
         return [cls.to_unified_event(e) for e in events]

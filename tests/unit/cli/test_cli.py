@@ -3,12 +3,13 @@ Unit tests for ThreatGuard Operator CLI.
 Tests command dispatching, state loading, and command execution across all subcommands.
 """
 
-import unittest
+import json
 import os
 import tempfile
-import json
+import unittest
 from io import StringIO
 from unittest.mock import patch
+
 from cloudnative_threatguard.cli.main import ThreatGuardCLI
 
 
@@ -119,7 +120,7 @@ class TestThreatGuardCLI(unittest.TestCase):
         ret = self.cli.cmd_report_incidents(Args())
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(output_file))
-        with open(output_file, "r", encoding="utf-8") as f:
+        with open(output_file, encoding="utf-8") as f:
             data = json.load(f)
         self.assertEqual(data["incidents_total"], 1)
 

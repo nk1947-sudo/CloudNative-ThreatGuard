@@ -19,18 +19,17 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional
 
 from cloudnative_threatguard.config import settings
-from cloudnative_threatguard.reporting.incidents import IncidentManager
-from cloudnative_threatguard.reporting.risk import RiskScoringEngine
 from cloudnative_threatguard.reporting.attack_chain import AttackChainVisualizer
+from cloudnative_threatguard.reporting.incidents import IncidentManager
 from cloudnative_threatguard.reporting.recommendations import ResponseRecommendationEngine
+from cloudnative_threatguard.reporting.risk import RiskScoringEngine
 from cloudnative_threatguard.runtime.events import SecurityEvent
 
 
 class ThreatGuardCLI:
-    def __init__(self, state_file: Optional[str] = None):
+    def __init__(self, state_file: str | None = None):
         self.state_file = state_file or str(settings.CLI_STATE_FILE)
         self.incident_manager = IncidentManager()
         self.risk_engine = RiskScoringEngine()
@@ -41,7 +40,7 @@ class ThreatGuardCLI:
         """Loads persistent incident state if present."""
         if os.path.exists(self.state_file):
             try:
-                with open(self.state_file, "r", encoding="utf-8") as f:
+                with open(self.state_file, encoding="utf-8") as f:
                     data = json.load(f)
                     self.incident_manager.incidents = data.get("incidents", {})
                     self.incident_manager.audit_log = data.get("audit_log", [])
@@ -65,7 +64,7 @@ class ThreatGuardCLI:
 
         k8s_ok = False
         try:
-            res = subprocess.run(["kubectl", "cluster-info"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            res = subprocess.run(["kubectl", "cluster-info"], capture_output=True, text=True, timeout=5)
             k8s_ok = res.returncode == 0
         except Exception:
             pass
@@ -75,7 +74,7 @@ class ThreatGuardCLI:
         if k8s_ok:
             try:
                 res = subprocess.run(["kubectl", "get", "pods", "-n", "gatekeeper-system", "-l", "control-plane=controller-manager"],
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                                     capture_output=True, text=True, timeout=5)
                 gk_ok = "Running" in res.stdout
             except Exception:
                 pass
@@ -85,7 +84,7 @@ class ThreatGuardCLI:
         if k8s_ok:
             try:
                 res = subprocess.run(["kubectl", "get", "pods", "-A", "-l", "app.kubernetes.io/name=tetragon"],
-                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                                     capture_output=True, text=True, timeout=5)
                 tet_ok = "Running" in res.stdout
             except Exception:
                 pass
@@ -175,7 +174,7 @@ class ThreatGuardCLI:
         print(f"{'WORKLOAD':<32} {'RISK SCORE':<12} {'TIER':<10} {'EVENTS':<8}")
         print("-" * 65)
 
-        workload_events: Dict[str, List[SecurityEvent]] = {}
+        workload_events: dict[str, list[SecurityEvent]] = {}
         for inc in self.incident_manager.incidents.values():
             workload_ref = f"{inc.get('affected_namespace')}/{inc.get('affected_pod')}"
             workload_events.setdefault(workload_ref, [])
@@ -318,7 +317,7 @@ class ThreatGuardCLI:
 
     def cmd_admission_validate(self, args) -> int:
         """Validates positive/negative Gatekeeper admission manifests via OPA."""
-        from cloudnative_threatguard.admission.validator import validate_all, print_report
+        from cloudnative_threatguard.admission.validator import print_report, validate_all
         report = validate_all()
         print_report(report)
         return 0 if report.all_passed else 1

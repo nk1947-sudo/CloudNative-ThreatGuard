@@ -3,6 +3,7 @@ Unit tests for Identity-to-Kubernetes Mapping Model and Registry.
 """
 
 import unittest
+
 from cloudnative_threatguard.correlation.cross_domain.models.mapping import (
     IdentityBinding,
     IdentityMappingRegistry,

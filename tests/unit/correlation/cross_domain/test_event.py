@@ -3,12 +3,15 @@ Unit tests for UnifiedSecurityEvent (v1.0) model.
 """
 
 import unittest
+
+from pydantic import ValidationError
+
 from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
+    CloudProvider,
     EventSource,
     EventType,
-    CloudProvider,
     Severity,
+    UnifiedSecurityEvent,
 )
 
 
@@ -72,7 +75,7 @@ class TestUnifiedSecurityEventModel(unittest.TestCase):
         self.assertEqual(event.severity, "critical")
 
     def test_score_bounds_validation(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             UnifiedSecurityEvent(
                 source=EventSource.THREATGUARD,
                 event_type=EventType.ADMISSION_VIOLATION,

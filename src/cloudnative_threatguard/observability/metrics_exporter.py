@@ -4,8 +4,8 @@ Scrapes admission results and correlated runtime eBPF detections,
 serving standard Prometheus text metrics on /metrics.
 """
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from cloudnative_threatguard.config import settings
 

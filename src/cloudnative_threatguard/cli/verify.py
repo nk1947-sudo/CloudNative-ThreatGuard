@@ -18,7 +18,6 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from typing import List
 
 from cloudnative_threatguard.config import settings
 
@@ -32,7 +31,7 @@ class VerificationResult:
     duration_ms: float = 0.0
 
 
-def _check_prerequisites() -> List[VerificationResult]:
+def _check_prerequisites() -> list[VerificationResult]:
     results = []
 
     start = time.time()
@@ -62,7 +61,7 @@ def _check_prerequisites() -> List[VerificationResult]:
     return results
 
 
-def _check_policies() -> List[VerificationResult]:
+def _check_policies() -> list[VerificationResult]:
     results = []
 
     start = time.time()
@@ -95,7 +94,7 @@ def _check_policies() -> List[VerificationResult]:
     return results
 
 
-def _check_tests() -> List[VerificationResult]:
+def _check_tests() -> list[VerificationResult]:
     start = time.time()
     try:
         proc = subprocess.run(
@@ -104,7 +103,7 @@ def _check_tests() -> List[VerificationResult]:
             capture_output=True, text=True, timeout=300,
         )
         passed = proc.returncode == 0
-        summary_line = next((l for l in reversed(proc.stdout.splitlines()) if l.strip()), proc.stdout[-200:])
+        summary_line = next((line for line in reversed(proc.stdout.splitlines()) if line.strip()), proc.stdout[-200:])
         details = summary_line if passed else f"pytest exited {proc.returncode}: {summary_line}"
     except Exception as e:
         passed = False
@@ -112,7 +111,7 @@ def _check_tests() -> List[VerificationResult]:
     return [VerificationResult("Full pytest suite (tests/)", "Testing", passed, details, (time.time() - start) * 1000)]
 
 
-def _check_cli() -> List[VerificationResult]:
+def _check_cli() -> list[VerificationResult]:
     start = time.time()
     try:
         # Deferred import: cli.main imports this module for the 'verify' subcommand,
@@ -133,7 +132,7 @@ def _check_cli() -> List[VerificationResult]:
     return [VerificationResult("ThreatGuard Operator CLI", "Operator Tools", passed, details, (time.time() - start) * 1000)]
 
 
-def _check_api_and_dashboard() -> List[VerificationResult]:
+def _check_api_and_dashboard() -> list[VerificationResult]:
     results = []
 
     start = time.time()
@@ -184,7 +183,7 @@ def _check_api_and_dashboard() -> List[VerificationResult]:
     return results
 
 
-def _check_evidence_collection() -> List[VerificationResult]:
+def _check_evidence_collection() -> list[VerificationResult]:
     start = time.time()
     try:
         from cloudnative_threatguard.reporting.evidence import ForensicEvidenceCollector
@@ -204,7 +203,7 @@ def run_verification() -> int:
     print("=" * 78)
     print("Starting automated health verification and platform audit...\n")
 
-    all_results: List[VerificationResult] = []
+    all_results: list[VerificationResult] = []
     all_results += _check_prerequisites()
     all_results += _check_policies()
     all_results += _check_tests()

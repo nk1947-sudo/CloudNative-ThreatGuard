@@ -2,11 +2,12 @@
 CloudGraphGuard IAM Security Findings Models.
 """
 
-from enum import Enum
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
 import uuid
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FindingType(str, Enum):
@@ -43,10 +44,10 @@ class IAMFinding(BaseModel):
     principal_arn: str
     principal_name: str
     account_id: str
-    target_role_arn: Optional[str] = None
-    target_resource_arn: Optional[str] = None
-    escalation_vector: Optional[PrivilegeEscalationVector] = None
-    attack_path: List[str] = Field(default_factory=list)
-    effective_actions: List[str] = Field(default_factory=list)
-    remediation_suggestion: Optional[str] = None
-    evidence: Dict[str, Any] = Field(default_factory=dict)
+    target_role_arn: str | None = None
+    target_resource_arn: str | None = None
+    escalation_vector: PrivilegeEscalationVector | None = None
+    attack_path: list[str] = Field(default_factory=list)
+    effective_actions: list[str] = Field(default_factory=list)
+    remediation_suggestion: str | None = None
+    evidence: dict[str, Any] = Field(default_factory=dict)

@@ -5,6 +5,7 @@ Validates YAML correctness, security profile designations, and misconfiguration 
 
 import os
 import unittest
+
 import yaml
 
 from cloudnative_threatguard.config import settings
@@ -19,7 +20,7 @@ class TestLabManifests(unittest.TestCase):
     def test_benign_web_frontend(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "01-benign-web-frontend.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
 
         self.assertEqual(doc["kind"], "Deployment")
@@ -38,7 +39,7 @@ class TestLabManifests(unittest.TestCase):
     def test_target_payment_service(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "02-target-payment-service.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             docs = list(yaml.safe_load_all(f))
 
         deployment = docs[0]
@@ -49,7 +50,7 @@ class TestLabManifests(unittest.TestCase):
     def test_target_analytics_worker(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "03-target-analytics-worker.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
 
         self.assertEqual(doc["metadata"]["name"], "analytics-worker")
@@ -58,7 +59,7 @@ class TestLabManifests(unittest.TestCase):
     def test_misconfigured_privileged_pod(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "04-misconfigured-privileged-pod.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
 
         self.assertEqual(doc["metadata"]["name"], "privileged-debug-pod")
@@ -69,7 +70,7 @@ class TestLabManifests(unittest.TestCase):
     def test_misconfigured_hostpath_pod(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "05-misconfigured-hostpath-pod.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
 
         self.assertEqual(doc["metadata"]["name"], "hostpath-mount-pod")
@@ -79,7 +80,7 @@ class TestLabManifests(unittest.TestCase):
     def test_unauthorized_cryptominer(self):
         filepath = os.path.join(LAB_MANIFEST_DIR, "06-unauthorized-cryptominer.yaml")
         self.assertTrue(os.path.exists(filepath))
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
 
         self.assertEqual(doc["metadata"]["name"], "unauthorized-cryptominer")

@@ -3,10 +3,11 @@ Unit tests for ThreatGuard Forensic Evidence Collector.
 Validates generation of all audit files (JSONL, JSON, MMD, HTML, MD).
 """
 
-import unittest
+import json
 import os
 import tempfile
-import json
+import unittest
+
 from cloudnative_threatguard.reporting.evidence import ForensicEvidenceCollector
 
 
@@ -34,7 +35,7 @@ class TestEvidenceCollector(unittest.TestCase):
             self.assertGreater(os.path.getsize(path), 0)
 
         # Check correlated incidents content
-        with open(files["incidents"], "r", encoding="utf-8") as f:
+        with open(files["incidents"], encoding="utf-8") as f:
             data = json.load(f)
             self.assertIn("incidents", data)
             self.assertGreater(len(data["incidents"]), 0)

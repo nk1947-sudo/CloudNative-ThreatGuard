@@ -5,10 +5,9 @@ condition predicates, false-positive considerations, and recommended responses.
 """
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, Any, List, Optional, Callable
-
-from cloudnative_threatguard.runtime.events import Severity
+from typing import Any
 
 
 @dataclass
@@ -27,13 +26,13 @@ class DetectionRule:
     event_source: str = "tetragon"
     event_type: str = "process_exec"
     enabled: bool = True
-    target_binaries: List[str] = field(default_factory=list)
-    target_paths: List[str] = field(default_factory=list)
-    predicate: Optional[Callable[[Dict[str, Any]], bool]] = None
+    target_binaries: list[str] = field(default_factory=list)
+    target_paths: list[str] = field(default_factory=list)
+    predicate: Callable[[dict[str, Any]], bool] | None = None
     false_positive_considerations: str = ""
     recommended_response: str = ""
 
-    def evaluate(self, event_context: Dict[str, Any]) -> bool:
+    def evaluate(self, event_context: dict[str, Any]) -> bool:
         """Evaluate if an event context matches this rule."""
         if not self.enabled:
             return False
@@ -60,7 +59,7 @@ class DetectionRule:
 
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dict format for serialization and legacy compatibility."""
         return {
             "rule_id": self.rule_id,
@@ -89,18 +88,18 @@ class RuleRegistry:
     Central repository and registry of security detection rules.
     """
     def __init__(self):
-        self._rules: Dict[str, DetectionRule] = {}
+        self._rules: dict[str, DetectionRule] = {}
         self._initialize_default_rules()
 
     def register(self, rule: DetectionRule):
         """Register a new detection rule."""
         self._rules[rule.rule_id] = rule
 
-    def get(self, rule_id: str) -> Optional[DetectionRule]:
+    def get(self, rule_id: str) -> DetectionRule | None:
         """Retrieve a rule by ID."""
         return self._rules.get(rule_id)
 
-    def list_rules(self, enabled_only: bool = False) -> List[DetectionRule]:
+    def list_rules(self, enabled_only: bool = False) -> list[DetectionRule]:
         """Return all registered rules."""
         if enabled_only:
             return [r for r in self._rules.values() if r.enabled]
@@ -120,7 +119,7 @@ class RuleRegistry:
             return True
         return False
 
-    def to_legacy_dict(self) -> Dict[str, Dict[str, Any]]:
+    def to_legacy_dict(self) -> dict[str, dict[str, Any]]:
         """Return backward-compatible dictionary of rules."""
         return {k: r.to_dict() for k, r in self._rules.items()}
 
@@ -289,4 +288,4 @@ class RuleRegistry:
 registry = RuleRegistry()
 
 # Backwards compatible dictionary exposed for legacy callers
-DETECTION_RULES: Dict[str, Dict[str, Any]] = registry.to_legacy_dict()
+DETECTION_RULES: dict[str, dict[str, Any]] = registry.to_legacy_dict()

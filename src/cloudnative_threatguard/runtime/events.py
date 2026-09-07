@@ -4,11 +4,11 @@ Provides a standardized event envelope across admission, runtime eBPF,
 network observability, configuration assessment, and attack simulations.
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Any, Optional, List
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-import uuid
+from typing import Any
 
 
 class SecurityEventType(str, Enum):
@@ -57,9 +57,9 @@ class SecurityEvent:
     destination_ip: str = ""
     destination_port: int = 0
     description: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to a standard JSON-serializable dictionary."""
         data = asdict(self)
         # Add backwards compatibility properties for legacy consumers
@@ -71,7 +71,7 @@ class SecurityEvent:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SecurityEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "SecurityEvent":
         """Reconstruct event from dictionary representation with schema tolerance."""
         # Handle legacy field mappings
         event_id = data.get("event_id") or f"ev-{uuid.uuid4().hex[:12]}"
@@ -272,11 +272,11 @@ class ThreatGuardDetection(SecurityEvent):
         self.description = val
 
     @property
-    def evidence(self) -> Dict[str, Any]:
+    def evidence(self) -> dict[str, Any]:
         return self.metadata
 
     @evidence.setter
-    def evidence(self, val: Dict[str, Any]):
+    def evidence(self, val: dict[str, Any]):
         self.metadata = val
 
     @property
@@ -329,13 +329,13 @@ class SecurityIncident:
     confidence: float = 0.90
     title: str = "Multi-Stage Workload Threat Chain"
     summary: str = ""
-    tactics: List[str] = field(default_factory=list)
-    techniques: List[str] = field(default_factory=list)
-    events: List[SecurityEvent] = field(default_factory=list)
+    tactics: list[str] = field(default_factory=list)
+    techniques: list[str] = field(default_factory=list)
+    events: list[SecurityEvent] = field(default_factory=list)
     status: str = "OPEN"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "incident_id": self.incident_id,
             "created_at": self.created_at,

@@ -3,8 +3,9 @@ Unit tests for the ThreatGuard Detection Engine.
 """
 
 import unittest
+
 from cloudnative_threatguard.detection.engine import DetectionEngine
-from cloudnative_threatguard.runtime.events import ThreatGuardDetection
+
 
 class TestDetectionEngine(unittest.TestCase):
     def setUp(self):

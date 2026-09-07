@@ -11,7 +11,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from cloudnative_threatguard.config import settings
 
@@ -30,7 +30,7 @@ def resolve_opa_binary() -> str:
     return "opa"
 
 
-def eval_policy(policy_pkg: str, review_object: Dict[str, Any], src_dir: Path = None) -> List[Dict[str, Any]]:
+def eval_policy(policy_pkg: str, review_object: dict[str, Any], src_dir: Path = None) -> list[dict[str, Any]]:
     """
     Evaluates a single Gatekeeper Rego package's `violation` rule against a
     Kubernetes object, returning the list of violation dicts (each with a

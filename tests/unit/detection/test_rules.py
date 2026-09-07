@@ -3,7 +3,8 @@ Unit tests for the Detection Rule Engine and Rule Registry in CloudNative Threat
 """
 
 import unittest
-from cloudnative_threatguard.detection.rules import DetectionRule, RuleRegistry, registry, DETECTION_RULES
+
+from cloudnative_threatguard.detection.rules import DETECTION_RULES, DetectionRule, RuleRegistry
 
 
 class TestRuleRegistry(unittest.TestCase):

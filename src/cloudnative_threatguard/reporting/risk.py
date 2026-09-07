@@ -4,10 +4,10 @@ Evaluates workload privilege, asset criticality, MITRE tactics, event volume,
 and temporal clustering to produce a bounded 0-100 risk score with full attribution.
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Any, List, Optional
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Any
 
 from cloudnative_threatguard.runtime.events import SecurityEvent
 
@@ -25,7 +25,7 @@ class RiskContributor:
     impact_points: float
     description: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -34,11 +34,11 @@ class RiskAssessment:
     composite_risk_score: float
     risk_tier: str
     workload_ref: str
-    top_risk_contributors: List[RiskContributor] = field(default_factory=list)
-    factor_breakdown: Dict[str, float] = field(default_factory=dict)
+    top_risk_contributors: list[RiskContributor] = field(default_factory=list)
+    factor_breakdown: dict[str, float] = field(default_factory=dict)
     evaluated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "composite_risk_score": round(self.composite_risk_score, 1),
             "risk_tier": self.risk_tier,
@@ -80,15 +80,15 @@ class RiskScoringEngine:
 
     def evaluate_workload(
         self,
-        events: List[SecurityEvent],
+        events: list[SecurityEvent],
         workload_ref: str = "threatguard/target-pod",
-        workload_spec: Optional[Dict[str, Any]] = None
+        workload_spec: dict[str, Any] | None = None
     ) -> RiskAssessment:
         """
         Calculates composite risk score for a workload given its events and optional pod spec.
         """
-        contributors: List[RiskContributor] = []
-        breakdown: Dict[str, float] = {
+        contributors: list[RiskContributor] = []
+        breakdown: dict[str, float] = {
             "severity_points": 0.0,
             "asset_criticality": 0.0,
             "privilege_level": 0.0,

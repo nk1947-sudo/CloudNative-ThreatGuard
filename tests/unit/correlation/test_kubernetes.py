@@ -4,8 +4,9 @@ Validates grouping of sequential, multi-stage events into coherent security inci
 """
 
 import unittest
+
 from cloudnative_threatguard.correlation.kubernetes import correlate_incidents
-from cloudnative_threatguard.runtime.events import SecurityEvent, Severity, SecurityEventType
+from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType, Severity
 
 
 class TestEventCorrelation(unittest.TestCase):

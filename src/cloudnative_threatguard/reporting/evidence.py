@@ -13,18 +13,19 @@ import json
 import os
 import subprocess
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from cloudnative_threatguard.config import settings
-from cloudnative_threatguard.runtime.events import SecurityEvent
 from cloudnative_threatguard.correlation.kubernetes import correlate_incidents
-from .risk import RiskScoringEngine
-from .incidents import IncidentManager
+from cloudnative_threatguard.runtime.events import SecurityEvent
+
 from .attack_chain import AttackChainVisualizer
+from .incidents import IncidentManager
+from .risk import RiskScoringEngine
 
 
 class ForensicEvidenceCollector:
-    def __init__(self, artifacts_dir: Optional[str] = None, protected_namespace: str = "threatguard"):
+    def __init__(self, artifacts_dir: str | None = None, protected_namespace: str = "threatguard"):
         self.artifacts_dir = artifacts_dir or str(settings.ARTIFACTS_DIR)
         self.protected_namespace = protected_namespace
         self.risk_engine = RiskScoringEngine()
@@ -34,15 +35,15 @@ class ForensicEvidenceCollector:
         for sub in ["admission", "runtime", "incidents", "reports", "forensics"]:
             os.makedirs(os.path.join(self.artifacts_dir, sub), exist_ok=True)
 
-    def collect_live_cluster_telemetry(self) -> Dict[str, Any]:
+    def collect_live_cluster_telemetry(self) -> dict[str, Any]:
         """Captures live logs and constraint statuses from Kubernetes if accessible."""
         cluster_info = {"status": "offline", "gatekeeper": None, "tetragon": None}
         try:
-            res = subprocess.run(["kubectl", "cluster-info"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            res = subprocess.run(["kubectl", "cluster-info"], capture_output=True, text=True, timeout=5)
             if res.returncode == 0:
                 cluster_info["status"] = "online"
                 # Gatekeeper constraints
-                gk_res = subprocess.run(["kubectl", "get", "constraints", "-o", "json"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                gk_res = subprocess.run(["kubectl", "get", "constraints", "-o", "json"], capture_output=True, text=True, timeout=5)
                 if gk_res.returncode == 0:
                     gk_data = json.loads(gk_res.stdout)
                     cluster_info["gatekeeper"] = gk_data
@@ -52,7 +53,7 @@ class ForensicEvidenceCollector:
 
                 # Tetragon logs
                 tet_res = subprocess.run(["kubectl", "logs", "-A", "-l", "app.kubernetes.io/name=tetragon", "--tail=200"],
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                                         capture_output=True, text=True, timeout=5)
                 if tet_res.returncode == 0:
                     tet_log_file = os.path.join(self.artifacts_dir, "runtime", "tetragon-daemon.log")
                     with open(tet_log_file, "w", encoding="utf-8") as f:
@@ -63,9 +64,9 @@ class ForensicEvidenceCollector:
 
     def generate_evidence_package(
         self,
-        security_events: Optional[List[SecurityEvent]] = None,
-        workload_spec: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, str]:
+        security_events: list[SecurityEvent] | None = None,
+        workload_spec: dict[str, Any] | None = None
+    ) -> dict[str, str]:
         """
         Processes normalized events, correlates incidents, evaluates risk,
         and writes out all deterministic audit artifacts.
@@ -147,13 +148,13 @@ class ForensicEvidenceCollector:
 
         return generated_files
 
-    def _load_or_create_events(self) -> List[SecurityEvent]:
+    def _load_or_create_events(self) -> list[SecurityEvent]:
         """Loads events from runtime-events.json or returns default verified simulation events."""
         runtime_json = os.path.join(self.artifacts_dir, "runtime", "runtime-events.json")
-        events: List[SecurityEvent] = []
+        events: list[SecurityEvent] = []
         if os.path.exists(runtime_json):
             try:
-                with open(runtime_json, "r", encoding="utf-8") as f:
+                with open(runtime_json, encoding="utf-8") as f:
                     raw = json.load(f)
                     for item in raw:
                         events.append(SecurityEvent.from_dict(item))
@@ -202,7 +203,7 @@ class ForensicEvidenceCollector:
         ))
         return events
 
-    def _render_executive_markdown(self, incidents: List[Dict[str, Any]], risk_eval: Any, event_count: int) -> str:
+    def _render_executive_markdown(self, incidents: list[dict[str, Any]], risk_eval: Any, event_count: int) -> str:
         lines = [
             "# ThreatGuard Executive Security Audit Report",
             f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
@@ -242,7 +243,7 @@ class ForensicEvidenceCollector:
         ])
         return "\n".join(lines)
 
-    def _render_executive_html(self, incidents: List[Dict[str, Any]], risk_eval: Any, event_count: int) -> str:
+    def _render_executive_html(self, incidents: list[dict[str, Any]], risk_eval: Any, event_count: int) -> str:
         tier_color = "#ef4444" if risk_eval.risk_tier == "CRITICAL" else "#f97316"
         html = f"""<!DOCTYPE html>
 <html lang="en">

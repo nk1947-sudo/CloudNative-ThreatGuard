@@ -3,8 +3,9 @@ Core AWS IAM data models for CloudGraphGuard.
 """
 
 from enum import Enum
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IAMPrincipalType(str, Enum):
@@ -18,12 +19,12 @@ class IAMPrincipalType(str, Enum):
 class IAMPolicyStatement(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    sid: Optional[str] = None
+    sid: str | None = None
     effect: str = "Allow"  # "Allow" or "Deny"
-    actions: List[str] = Field(default_factory=list)
-    resources: List[str] = Field(default_factory=list)
-    principals: List[str] = Field(default_factory=list)
-    conditions: Dict[str, Any] = Field(default_factory=dict)
+    actions: list[str] = Field(default_factory=list)
+    resources: list[str] = Field(default_factory=list)
+    principals: list[str] = Field(default_factory=list)
+    conditions: dict[str, Any] = Field(default_factory=dict)
 
 
 class IAMPolicy(BaseModel):
@@ -33,7 +34,7 @@ class IAMPolicy(BaseModel):
     name: str
     arn: str
     is_managed: bool = True
-    statements: List[IAMPolicyStatement] = Field(default_factory=list)
+    statements: list[IAMPolicyStatement] = Field(default_factory=list)
 
 
 class IAMPrincipal(BaseModel):
@@ -43,21 +44,21 @@ class IAMPrincipal(BaseModel):
     arn: str
     account_id: str
     principal_type: IAMPrincipalType
-    attached_policies: List[IAMPolicy] = Field(default_factory=list)
-    inline_policies: List[IAMPolicy] = Field(default_factory=list)
-    tags: Dict[str, str] = Field(default_factory=dict)
+    attached_policies: list[IAMPolicy] = Field(default_factory=list)
+    inline_policies: list[IAMPolicy] = Field(default_factory=list)
+    tags: dict[str, str] = Field(default_factory=dict)
 
 
 class IAMUser(IAMPrincipal):
-    groups: List[str] = Field(default_factory=list)
+    groups: list[str] = Field(default_factory=list)
     has_mfa: bool = False
     access_keys_count: int = 1
 
 
 class IAMRole(IAMPrincipal):
-    trust_policy_statements: List[IAMPolicyStatement] = Field(default_factory=list)
+    trust_policy_statements: list[IAMPolicyStatement] = Field(default_factory=list)
     max_session_duration: int = 3600
-    instance_profile_arns: List[str] = Field(default_factory=list)
+    instance_profile_arns: list[str] = Field(default_factory=list)
 
 
 class IAMResource(BaseModel):

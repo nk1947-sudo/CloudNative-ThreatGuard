@@ -4,14 +4,16 @@ Unifies CloudGraphGuard IAM compromise evidence with ThreatGuard runtime detecti
 Maintains separate remediation proposals for Cloud IAM and Kubernetes domains (dry-run only).
 """
 
-from enum import Enum
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
 import uuid
-from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CorrelatedCluster
 
 from .event import Severity
-from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CorrelatedCluster
 
 
 class IncidentStatus(str, Enum):
@@ -48,20 +50,20 @@ class CrossDomainIncident(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    attack_chain: List[str] = Field(
+    attack_chain: list[str] = Field(
         default_factory=list,
         description="Linear high-level attack progression (e.g. developer -> role -> EKS -> pod -> secret)"
     )
-    source_event_ids: List[str] = Field(
+    source_event_ids: list[str] = Field(
         default_factory=list,
         description="IDs of all supporting UnifiedSecurityEvents"
     )
-    evidence_summary: Dict[str, Any] = Field(default_factory=dict)
-    cloud_context: Dict[str, Any] = Field(default_factory=dict)
-    k8s_context: Dict[str, Any] = Field(default_factory=dict)
-    remediation_proposals: List[RemediationProposal] = Field(default_factory=list)
+    evidence_summary: dict[str, Any] = Field(default_factory=dict)
+    cloud_context: dict[str, Any] = Field(default_factory=dict)
+    k8s_context: dict[str, Any] = Field(default_factory=dict)
+    remediation_proposals: list[RemediationProposal] = Field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
 
@@ -71,7 +73,7 @@ class UnifiedIncidentManager:
     """
 
     def __init__(self):
-        self._incidents: Dict[str, CrossDomainIncident] = {}
+        self._incidents: dict[str, CrossDomainIncident] = {}
 
     def create_from_cluster(self, cluster: CorrelatedCluster) -> CrossDomainIncident:
         chain = cluster.attack_chain
@@ -84,7 +86,7 @@ class UnifiedIncidentManager:
             sev = Severity.MEDIUM
 
         # Build linear chain representation
-        chain_steps: List[str] = []
+        chain_steps: list[str] = []
         if chain and chain.cloud_principal:
             chain_steps.append(chain.cloud_principal.split("/")[-1])
         if chain and chain.cloud_role:
@@ -129,7 +131,7 @@ class UnifiedIncidentManager:
             }
 
         # Remediation proposals (Dual-track)
-        remediations: List[RemediationProposal] = []
+        remediations: list[RemediationProposal] = []
         # Track 1: Cloud IAM
         if cluster.iam_events:
             for ev in cluster.iam_events:
@@ -194,10 +196,10 @@ class UnifiedIncidentManager:
         self._incidents[incident.incident_id] = incident
         return incident
 
-    def get_incident(self, incident_id: str) -> Optional[CrossDomainIncident]:
+    def get_incident(self, incident_id: str) -> CrossDomainIncident | None:
         return self._incidents.get(incident_id)
 
-    def list_incidents(self, status: Optional[IncidentStatus] = None) -> List[CrossDomainIncident]:
+    def list_incidents(self, status: IncidentStatus | None = None) -> list[CrossDomainIncident]:
         if status:
             return [i for i in self._incidents.values() if i.status == status]
         return list(self._incidents.values())

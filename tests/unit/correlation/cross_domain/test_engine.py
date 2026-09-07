@@ -3,15 +3,20 @@ Unit tests for CrossDomainCorrelationEngine.
 """
 
 import unittest
+
+from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CrossDomainCorrelationEngine
 from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
+    CloudProvider,
     EventSource,
     EventType,
-    CloudProvider,
     Severity,
+    UnifiedSecurityEvent,
 )
-from cloudnative_threatguard.correlation.cross_domain.models.mapping import IdentityBinding, IdentityMappingRegistry, MappingMechanism
-from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CrossDomainCorrelationEngine
+from cloudnative_threatguard.correlation.cross_domain.models.mapping import (
+    IdentityBinding,
+    IdentityMappingRegistry,
+    MappingMechanism,
+)
 
 
 class TestCrossDomainCorrelation(unittest.TestCase):

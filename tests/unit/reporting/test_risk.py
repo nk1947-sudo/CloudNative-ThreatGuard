@@ -3,8 +3,9 @@ Unit tests for the Transparent Risk Scoring Engine in CloudNative ThreatGuard.
 """
 
 import unittest
-from cloudnative_threatguard.runtime.events import SecurityEvent, Severity
-from cloudnative_threatguard.reporting.risk import RiskScoringEngine, RiskTier, RiskAssessment
+
+from cloudnative_threatguard.reporting.risk import RiskScoringEngine, RiskTier
+from cloudnative_threatguard.runtime.events import SecurityEvent
 
 
 class TestRiskScoringEngine(unittest.TestCase):

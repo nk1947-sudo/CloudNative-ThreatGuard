@@ -4,8 +4,9 @@ Validates incident lifecycle transitions, attack chain generation, and recommend
 """
 
 import unittest
+
 from cloudnative_threatguard.reporting.incidents import IncidentManager, IncidentStatus
-from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityIncident, Severity, SecurityEventType
+from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType, SecurityIncident, Severity
 
 
 class TestIncidentManager(unittest.TestCase):

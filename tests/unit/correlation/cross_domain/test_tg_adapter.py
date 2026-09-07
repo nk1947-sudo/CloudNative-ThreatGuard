@@ -3,9 +3,16 @@ Unit tests for ThreatGuardAdapter.
 """
 
 import unittest
-from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType, Severity as TGSeverity
+
 from cloudnative_threatguard.correlation.cross_domain.adapters.tg_adapter import ThreatGuardAdapter
-from cloudnative_threatguard.correlation.cross_domain.models.event import EventSource, EventType, CloudProvider, Severity
+from cloudnative_threatguard.correlation.cross_domain.models.event import (
+    CloudProvider,
+    EventSource,
+    EventType,
+    Severity,
+)
+from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType
+from cloudnative_threatguard.runtime.events import Severity as TGSeverity
 
 
 class TestThreatGuardAdapter(unittest.TestCase):

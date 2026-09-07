@@ -4,8 +4,9 @@ Validates security posture extraction, process tree reconstruction, and telemetr
 """
 
 import unittest
+
 from cloudnative_threatguard.reporting.investigation import WorkloadInvestigator, WorkloadSecurityPosture
-from cloudnative_threatguard.runtime.events import SecurityEvent, Severity, SecurityEventType
+from cloudnative_threatguard.runtime.events import SecurityEvent, Severity
 
 
 class TestWorkloadInvestigator(unittest.TestCase):

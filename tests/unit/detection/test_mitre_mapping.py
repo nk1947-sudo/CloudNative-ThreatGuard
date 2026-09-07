@@ -3,11 +3,8 @@ Unit tests for MITRE ATT&CK for Containers taxonomy in CloudNative ThreatGuard.
 """
 
 import unittest
-from cloudnative_threatguard.detection.mitre_mapping import (
-    MITRE_CONTAINER_MATRIX,
-    get_mitre_mapping,
-    list_tactics
-)
+
+from cloudnative_threatguard.detection.mitre_mapping import get_mitre_mapping, list_tactics
 
 
 class TestMitreMapping(unittest.TestCase):

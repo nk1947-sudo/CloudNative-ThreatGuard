@@ -4,11 +4,12 @@ Manages the end-to-end incident lifecycle (NEW -> TRIAGED -> INVESTIGATING -> CO
 attack chain reconstruction, and recommended containment actions.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Any
 
 from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityIncident
+
 from .risk import RiskScoringEngine
 
 
@@ -36,16 +37,16 @@ class IncidentManager:
     ``history``, and ``metadata``. Every consumer (the CLI, the evidence/
     report exporters) must read these exact keys.
     """
-    def __init__(self, risk_engine: Optional[RiskScoringEngine] = None):
-        self.incidents: Dict[str, Dict[str, Any]] = {}
+    def __init__(self, risk_engine: RiskScoringEngine | None = None):
+        self.incidents: dict[str, dict[str, Any]] = {}
         self.risk_engine = risk_engine or RiskScoringEngine()
-        self.audit_log: List[Dict[str, Any]] = []
+        self.audit_log: list[dict[str, Any]] = []
 
     def create_incident_from_correlation(
         self,
         correlated: SecurityIncident,
-        workload_spec: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        workload_spec: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Creates and stores a managed security incident from a correlated incident object.
         """
@@ -121,10 +122,10 @@ class IncidentManager:
         self._record_audit("CREATE_INCIDENT", inc_id, f"Created incident with severity {correlated.severity}")
         return incident_record
 
-    def get_incident(self, incident_id: str) -> Optional[Dict[str, Any]]:
+    def get_incident(self, incident_id: str) -> dict[str, Any] | None:
         return self.incidents.get(incident_id)
 
-    def get_incident_visualizations(self, incident_id: str) -> Optional[Dict[str, Any]]:
+    def get_incident_visualizations(self, incident_id: str) -> dict[str, Any] | None:
         """
         Returns JSON graph, Mermaid diagram, ASCII tree, and HTML snippet for an incident.
         """
@@ -143,10 +144,10 @@ class IncidentManager:
 
     def list_incidents(
         self,
-        status: Optional[str] = None,
-        severity: Optional[str] = None,
-        namespace: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        status: str | None = None,
+        severity: str | None = None,
+        namespace: str | None = None
+    ) -> list[dict[str, Any]]:
         results = list(self.incidents.values())
         if status:
             results = [inc for inc in results if inc["status"].upper() == status.upper()]
@@ -162,7 +163,7 @@ class IncidentManager:
         new_status: str,
         notes: str = "",
         actor: str = "security-analyst"
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Transition incident lifecycle status.
         """
@@ -189,7 +190,7 @@ class IncidentManager:
         self._record_audit("UPDATE_INCIDENT_STATUS", incident_id, f"Status changed from {old_status} to {new_status.upper()} by {actor}")
         return inc
 
-    def _build_timeline(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _build_timeline(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Produces an ordered event sequence with delta time annotations.
         """
@@ -212,10 +213,10 @@ class IncidentManager:
 
     def _build_attack_chain(
         self,
-        events: List[Dict[str, Any]],
-        tactics: List[str],
-        techniques: List[str]
-    ) -> List[Dict[str, Any]]:
+        events: list[dict[str, Any]],
+        tactics: list[str],
+        techniques: list[str]
+    ) -> list[dict[str, Any]]:
         """
         Constructs a structured directed attack-chain representation.
         """
@@ -235,10 +236,10 @@ class IncidentManager:
 
     def _generate_recommendations(
         self,
-        techniques: List[str],
+        techniques: list[str],
         pod_name: str,
         namespace: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generates non-destructive, actionable remediation guidance with dry-run kubectl commands.
         """

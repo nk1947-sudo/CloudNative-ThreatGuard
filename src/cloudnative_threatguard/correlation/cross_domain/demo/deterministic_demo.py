@@ -17,27 +17,32 @@ All data is deterministically modeled and labeled [DEMO / SIMULATED DATA].
 
 import json
 import os
-from typing import Dict, Any
+from typing import Any
 
-from cloudnative_threatguard.cloudgraphguard.models.findings import IAMFinding, FindingType, PrivilegeEscalationVector
+from cloudnative_threatguard.cloudgraphguard.models.findings import FindingType, IAMFinding, PrivilegeEscalationVector
+from cloudnative_threatguard.config import settings
 from cloudnative_threatguard.correlation.cross_domain.adapters.cgg_adapter import CloudGraphGuardAdapter
 from cloudnative_threatguard.correlation.cross_domain.adapters.tg_adapter import ThreatGuardAdapter
-from cloudnative_threatguard.correlation.cross_domain.models.mapping import IdentityBinding, IdentityMappingRegistry, MappingMechanism
 from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CrossDomainCorrelationEngine
 from cloudnative_threatguard.correlation.cross_domain.engine.risk_evaluator import CrossDomainRiskEvaluator
-from cloudnative_threatguard.correlation.cross_domain.models.incident import UnifiedIncidentManager
 from cloudnative_threatguard.correlation.cross_domain.graph.unified_graph import (
-    UnifiedSecurityGraph,
-    UnifiedNode,
     UnifiedEdge,
+    UnifiedNode,
     UnifiedNodeType,
     UnifiedRelationship,
+    UnifiedSecurityGraph,
 )
-from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType, Severity as TGSeverity
-from cloudnative_threatguard.config import settings
+from cloudnative_threatguard.correlation.cross_domain.models.incident import UnifiedIncidentManager
+from cloudnative_threatguard.correlation.cross_domain.models.mapping import (
+    IdentityBinding,
+    IdentityMappingRegistry,
+    MappingMechanism,
+)
+from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType
+from cloudnative_threatguard.runtime.events import Severity as TGSeverity
 
 
-def build_demo_scenario() -> Dict[str, Any]:
+def build_demo_scenario() -> dict[str, Any]:
     """
     Constructs and executes the deterministic cross-domain demonstration scenario.
     """

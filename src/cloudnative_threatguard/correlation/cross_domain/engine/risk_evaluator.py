@@ -5,10 +5,12 @@ workload vulnerabilities, runtime threat detections, and resource sensitivity.
 Does not replace individual domain engines; aggregates them into a transparent factor model.
 """
 
-from typing import List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from cloudnative_threatguard.correlation.cross_domain.models.event import Severity
+
 from .correlation_engine import CorrelatedCluster
 
 
@@ -28,11 +30,11 @@ class UnifiedRiskAssessment(BaseModel):
     severity: Severity
     iam_subtotal: float
     runtime_subtotal: float
-    factors: List[RiskFactor] = Field(default_factory=list)
+    factors: list[RiskFactor] = Field(default_factory=list)
     remediation_urgency: str
     calculation_formula: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
 
@@ -46,7 +48,7 @@ class CrossDomainRiskEvaluator:
 
     @classmethod
     def evaluate_cluster(cls, cluster: CorrelatedCluster) -> UnifiedRiskAssessment:
-        factors: List[RiskFactor] = []
+        factors: list[RiskFactor] = []
         iam_subtotal = 0.0
         runtime_subtotal = 0.0
 

@@ -16,14 +16,15 @@ import glob
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import yaml
 
 from cloudnative_threatguard.config import settings
+
 from .opa_client import eval_policy
 
-POLICIES: Dict[str, Tuple[str, str]] = {
+POLICIES: dict[str, tuple[str, str]] = {
     "01-privileged-pod.yaml": ("k8sprivilegedcontainer", "privileged mode must be false"),
     "02-hostpid-pod.yaml": ("k8shostnamespaces", "hostPID must be false"),
     "03-docker-socket-mount.yaml": ("k8shostfilesystem", "mounting hostPath '/var/run/docker.sock' is strictly prohibited"),
@@ -34,7 +35,7 @@ POLICIES: Dict[str, Tuple[str, str]] = {
     "08-writable-rootfs.yaml": ("k8sreadonlyrootfs", "readOnlyRootFilesystem must be true"),
 }
 
-ALL_PACKAGES: List[str] = [
+ALL_PACKAGES: list[str] = [
     "k8sprivilegedcontainer", "k8shostnamespaces", "k8shostfilesystem",
     "k8snonrootuser", "k8sprivilegeescalation", "k8sdropcapabilities",
     "k8sseccompprofile", "k8sreadonlyrootfs",
@@ -47,15 +48,15 @@ class PolicyCheckResult:
     policy_package: str
     blocked: bool
     message_matched_expected: bool
-    violation_messages: List[str] = field(default_factory=list)
+    violation_messages: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ManifestValidationReport:
     positive_manifest: str
     positive_passed: bool
-    positive_failures: List[str]
-    negative_results: List[PolicyCheckResult]
+    positive_failures: list[str]
+    negative_results: list[PolicyCheckResult]
 
     @property
     def total_negative(self) -> int:
@@ -71,11 +72,11 @@ class ManifestValidationReport:
 
 
 def _load_yaml(filepath: Path) -> Any:
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
-def validate_all(gatekeeper_dir: Optional[Path] = None) -> ManifestValidationReport:
+def validate_all(gatekeeper_dir: Path | None = None) -> ManifestValidationReport:
     """
     Validates the positive manifest (must pass every policy) and all negative
     manifests (each must trigger its mapped policy) using the OPA CLI.
@@ -86,7 +87,7 @@ def validate_all(gatekeeper_dir: Optional[Path] = None) -> ManifestValidationRep
     # 1. Positive manifest
     pos_path = gatekeeper_dir / "tests" / "manifests" / "positive" / "secure-workload.yaml"
     pos_pod = _load_yaml(pos_path)
-    positive_failures: List[str] = []
+    positive_failures: list[str] = []
     for pkg in ALL_PACKAGES:
         violations = eval_policy(pkg, pos_pod, src_dir=src_dir)
         if violations:
@@ -96,7 +97,7 @@ def validate_all(gatekeeper_dir: Optional[Path] = None) -> ManifestValidationRep
     neg_dir = gatekeeper_dir / "tests" / "manifests" / "negative"
     neg_files = sorted(glob.glob(str(neg_dir / "*.yaml")))
 
-    negative_results: List[PolicyCheckResult] = []
+    negative_results: list[PolicyCheckResult] = []
     for fpath in neg_files:
         fname = os.path.basename(fpath)
         if fname not in POLICIES:

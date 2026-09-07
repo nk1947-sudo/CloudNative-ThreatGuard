@@ -8,11 +8,12 @@ Provides deep digital forensics on Kubernetes workloads:
 - Correlated risk score and active alert dossier
 """
 
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from typing import Any
 
 from cloudnative_threatguard.runtime.events import SecurityEvent, Severity
+
 from .risk import RiskScoringEngine
 
 
@@ -24,9 +25,9 @@ class ProcessNode:
     arguments: str
     timestamp: str
     user: str = "root"
-    children: List["ProcessNode"] = field(default_factory=list)
+    children: list["ProcessNode"] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "pid": self.pid,
             "ppid": self.ppid,
@@ -41,18 +42,18 @@ class ProcessNode:
 @dataclass
 class WorkloadSecurityPosture:
     privileged: bool = False
-    run_as_user: Optional[int] = None
+    run_as_user: int | None = None
     run_as_non_root: bool = False
     read_only_root_filesystem: bool = False
     allow_privilege_escalation: bool = True
     host_pid: bool = False
     host_network: bool = False
     host_ipc: bool = False
-    capabilities_add: List[str] = field(default_factory=list)
-    capabilities_drop: List[str] = field(default_factory=list)
+    capabilities_add: list[str] = field(default_factory=list)
+    capabilities_drop: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_pod_spec(cls, pod_spec: Dict[str, Any]) -> "WorkloadSecurityPosture":
+    def from_pod_spec(cls, pod_spec: dict[str, Any]) -> "WorkloadSecurityPosture":
         spec = pod_spec.get("spec", pod_spec)
         pod_sc = spec.get("securityContext", {})
         containers = spec.get("containers", [])
@@ -78,17 +79,17 @@ class WorkloadInvestigator:
     """
     Forensics and process tree investigation engine for Kubernetes workloads.
     """
-    def __init__(self, risk_engine: Optional[RiskScoringEngine] = None):
+    def __init__(self, risk_engine: RiskScoringEngine | None = None):
         self.risk_engine = risk_engine or RiskScoringEngine()
 
     def investigate(
         self,
         namespace: str,
         pod_name: str,
-        events: List[SecurityEvent],
-        pod_spec: Optional[Dict[str, Any]] = None,
+        events: list[SecurityEvent],
+        pod_spec: dict[str, Any] | None = None,
         container_image: str = "nginx:1.25-alpine"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generates a comprehensive investigation dossier for a specific workload.
         """
@@ -185,7 +186,7 @@ class WorkloadInvestigator:
             ]
         }
 
-    def reconstruct_process_tree(self, process_records: List[Dict[str, Any]]) -> List[ProcessNode]:
+    def reconstruct_process_tree(self, process_records: list[dict[str, Any]]) -> list[ProcessNode]:
         """
         Reconstructs parent-child process tree from chronological process records.
         """
@@ -202,7 +203,7 @@ class WorkloadInvestigator:
             user="root"
         )
 
-        node_map: Dict[int, ProcessNode] = {1: root}
+        node_map: dict[int, ProcessNode] = {1: root}
 
         for rec in process_records:
             pid = rec.get("pid", 100)

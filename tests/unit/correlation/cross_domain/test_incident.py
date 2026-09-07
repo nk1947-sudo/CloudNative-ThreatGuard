@@ -3,19 +3,23 @@ Unit tests for CrossDomainIncident and UnifiedIncidentManager.
 """
 
 import unittest
+
+from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import (
+    CorrelatedAttackChain,
+    CorrelatedCluster,
+)
 from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
+    CloudProvider,
     EventSource,
     EventType,
-    CloudProvider,
     Severity,
+    UnifiedSecurityEvent,
+)
+from cloudnative_threatguard.correlation.cross_domain.models.incident import (
+    IncidentStatus,
+    UnifiedIncidentManager,
 )
 from cloudnative_threatguard.correlation.cross_domain.models.mapping import IdentityBinding, MappingMechanism
-from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CorrelatedCluster, CorrelatedAttackChain
-from cloudnative_threatguard.correlation.cross_domain.models.incident import (
-    UnifiedIncidentManager,
-    IncidentStatus,
-)
 
 
 class TestUnifiedIncident(unittest.TestCase):

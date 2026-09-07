@@ -3,15 +3,16 @@ Unit tests for CrossDomainRiskEvaluator.
 """
 
 import unittest
-from cloudnative_threatguard.correlation.cross_domain.models.event import (
-    UnifiedSecurityEvent,
-    EventSource,
-    EventType,
-    CloudProvider,
-    Severity,
-)
+
 from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import CorrelatedCluster
 from cloudnative_threatguard.correlation.cross_domain.engine.risk_evaluator import CrossDomainRiskEvaluator
+from cloudnative_threatguard.correlation.cross_domain.models.event import (
+    CloudProvider,
+    EventSource,
+    EventType,
+    Severity,
+    UnifiedSecurityEvent,
+)
 
 
 class TestUnifiedRiskEvaluator(unittest.TestCase):

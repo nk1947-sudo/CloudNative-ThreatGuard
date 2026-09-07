@@ -7,7 +7,6 @@ of ``correlation.cross_domain``, which correlates across cloud identity and
 Kubernetes runtime domains using a separate Pydantic-based event model.
 """
 
-from typing import List, Optional
 
 from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityIncident
 
@@ -15,9 +14,9 @@ _SEVERITY_ORDER = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
 
 def correlate_incidents(
-    events: List[SecurityEvent],
+    events: list[SecurityEvent],
     window_seconds: int = 300,
-) -> List[SecurityIncident]:
+) -> list[SecurityIncident]:
     """
     Groups sequential security events by pod/workload into high-level attack
     chain incidents. Generates unique '#TG-xxxxxx' incident identifiers with
@@ -32,7 +31,7 @@ def correlate_incidents(
         key = f"{ev.namespace}/{ev.pod}" if ev.pod else ev.namespace
         grouped.setdefault(key, []).append(ev)
 
-    incidents: List[SecurityIncident] = []
+    incidents: list[SecurityIncident] = []
     for key, ev_list in grouped.items():
         if not ev_list:
             continue
@@ -48,8 +47,8 @@ def correlate_incidents(
                     highest_sev = e.severity
 
         # Collect unique tactics and techniques preserving order
-        tactics: List[str] = []
-        techniques: List[str] = []
+        tactics: list[str] = []
+        techniques: list[str] = []
         for e in ev_list:
             if e.mitre_tactic and e.mitre_tactic not in tactics:
                 tactics.append(e.mitre_tactic)

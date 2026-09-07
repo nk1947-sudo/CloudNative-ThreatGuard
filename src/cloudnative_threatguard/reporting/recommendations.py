@@ -5,9 +5,9 @@ Enforces the 'Human-in-the-loop' principle: provides copy-pasteable kubectl comm
 defined blast radiuses and reversibility notes rather than blind auto-mutations.
 """
 
-from typing import List, Dict, Any
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Any
 
 
 class RecommendationPriority(str, Enum):
@@ -38,7 +38,7 @@ class ResponseRecommendation:
     blast_radius: str
     reversibility: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -51,12 +51,12 @@ class ResponseRecommendationEngine:
         self,
         namespace: str,
         pod_name: str,
-        techniques: List[str],
+        techniques: list[str],
         severity: str = "HIGH",
         node_name: str = "threatguard-local-control-plane",
         container_name: str = "app"
-    ) -> List[ResponseRecommendation]:
-        recs: List[ResponseRecommendation] = []
+    ) -> list[ResponseRecommendation]:
+        recs: list[ResponseRecommendation] = []
         rec_counter = 1
 
         # 1. Forensic Acquisition (Always recommended first before modifying state)

@@ -10,11 +10,12 @@ scoped to turning one raw event into zero or one ``ThreatGuardDetection``.
 
 import json
 import os
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+from typing import Any
 
 from cloudnative_threatguard.runtime.events import ThreatGuardDetection
 from cloudnative_threatguard.utils.io import read_text_lines_multi_encoding
+
 from .rules import DETECTION_RULES
 
 
@@ -22,10 +23,10 @@ class DetectionEngine:
     def __init__(self, protected_namespace: str = "threatguard"):
         self.protected_namespace = protected_namespace
         self.rules = DETECTION_RULES
-        self.detections: List[ThreatGuardDetection] = []
+        self.detections: list[ThreatGuardDetection] = []
         self.total_events_processed: int = 0
 
-    def process_raw_tetragon_event(self, raw_event: Dict[str, Any], record: bool = True) -> Optional[ThreatGuardDetection]:
+    def process_raw_tetragon_event(self, raw_event: dict[str, Any], record: bool = True) -> ThreatGuardDetection | None:
         """
         Evaluates a single raw Tetragon event against detection rules.
         """
@@ -35,11 +36,11 @@ class DetectionEngine:
             self.detections.append(det)
         return det
 
-    def process_event(self, raw_event: Dict[str, Any], record: bool = True) -> Optional[ThreatGuardDetection]:
+    def process_event(self, raw_event: dict[str, Any], record: bool = True) -> ThreatGuardDetection | None:
         """Convenience alias for process_raw_tetragon_event."""
         return self.process_raw_tetragon_event(raw_event, record=record)
 
-    def _evaluate_raw_event(self, raw_event: Dict[str, Any]) -> Optional[ThreatGuardDetection]:
+    def _evaluate_raw_event(self, raw_event: dict[str, Any]) -> ThreatGuardDetection | None:
 
         # Tetragon events usually wrap process_exec, process_kprobe, etc.
         event_time = raw_event.get("time", datetime.now(timezone.utc).isoformat())
@@ -59,7 +60,7 @@ class DetectionEngine:
 
         return None
 
-    def _handle_process_exec(self, exec_event: Dict[str, Any], event_time: str) -> Optional[ThreatGuardDetection]:
+    def _handle_process_exec(self, exec_event: dict[str, Any], event_time: str) -> ThreatGuardDetection | None:
         if not isinstance(exec_event, dict):
             return None
         proc = exec_event.get("process") or {}
@@ -212,7 +213,7 @@ class DetectionEngine:
 
         return None
 
-    def _handle_kprobe(self, kprobe_event: Dict[str, Any], event_time: str) -> Optional[ThreatGuardDetection]:
+    def _handle_kprobe(self, kprobe_event: dict[str, Any], event_time: str) -> ThreatGuardDetection | None:
         if not isinstance(kprobe_event, dict):
             return None
         func_name = kprobe_event.get("function_name") or ""
@@ -306,7 +307,7 @@ class DetectionEngine:
 
         return None
 
-    def _handle_generic_event(self, event: Dict[str, Any], event_time: str) -> Optional[ThreatGuardDetection]:
+    def _handle_generic_event(self, event: dict[str, Any], event_time: str) -> ThreatGuardDetection | None:
         # Formatted test/simulation event ingestion
         rule_id = event.get("rule_id")
         if rule_id and rule_id in self.rules:
@@ -330,7 +331,7 @@ class DetectionEngine:
             )
         return None
 
-    def ingest_file(self, filepath: str) -> List[ThreatGuardDetection]:
+    def ingest_file(self, filepath: str) -> list[ThreatGuardDetection]:
         """
         Parses a file containing line-delimited JSON events.
         """
@@ -352,7 +353,7 @@ class DetectionEngine:
                 continue
         return new_detections
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Generates summary metrics for the telemetry scorecard.
         """

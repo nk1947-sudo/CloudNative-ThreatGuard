@@ -4,7 +4,12 @@ Validates generation of safe, high-confidence playbooks and dry-run commands.
 """
 
 import unittest
-from cloudnative_threatguard.reporting.recommendations import ResponseRecommendationEngine, ActionCategory, RecommendationPriority
+
+from cloudnative_threatguard.reporting.recommendations import (
+    ActionCategory,
+    RecommendationPriority,
+    ResponseRecommendationEngine,
+)
 
 
 class TestResponseRecommendations(unittest.TestCase):

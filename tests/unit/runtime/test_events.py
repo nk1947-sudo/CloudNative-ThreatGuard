@@ -3,12 +3,8 @@ Unit tests for the Normalized Security Event Model in CloudNative ThreatGuard.
 """
 
 import unittest
-from cloudnative_threatguard.runtime.events import (
-    SecurityEvent,
-    SecurityEventType,
-    Severity,
-    ThreatGuardDetection
-)
+
+from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityEventType, Severity, ThreatGuardDetection
 
 
 class TestSecurityEventModel(unittest.TestCase):

@@ -6,8 +6,9 @@ Preserves provenance and evidence for every edge.
 """
 
 from enum import Enum
-from typing import Dict, List, Any, Optional, Set
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UnifiedNodeType(str, Enum):
@@ -53,10 +54,10 @@ class UnifiedNode(BaseModel):
     label: str
     node_type: UnifiedNodeType
     source_system: str  # "CloudGraphGuard" or "CloudNative ThreatGuard"
-    arn_or_uri: Optional[str] = None
-    severity: Optional[str] = None
-    risk_score: Optional[float] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    arn_or_uri: str | None = None
+    severity: str | None = None
+    risk_score: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class UnifiedEdge(BaseModel):
@@ -66,7 +67,7 @@ class UnifiedEdge(BaseModel):
     target: str
     relationship: UnifiedRelationship
     provenance: str = Field(description="Audit trail explaining why this edge exists")
-    evidence: Dict[str, Any] = Field(default_factory=dict)
+    evidence: dict[str, Any] = Field(default_factory=dict)
     weight: float = 1.0
 
 
@@ -76,9 +77,9 @@ class UnifiedSecurityGraph:
     """
 
     def __init__(self):
-        self.nodes: Dict[str, UnifiedNode] = {}
-        self.edges: List[UnifiedEdge] = []
-        self._adjacency: Dict[str, List[UnifiedEdge]] = {}
+        self.nodes: dict[str, UnifiedNode] = {}
+        self.edges: list[UnifiedEdge] = []
+        self._adjacency: dict[str, list[UnifiedEdge]] = {}
 
     def add_node(self, node: UnifiedNode):
         self.nodes[node.id] = node
@@ -91,14 +92,14 @@ class UnifiedSecurityGraph:
         self.edges.append(edge)
         self._adjacency[edge.source].append(edge)
 
-    def find_attack_paths(self, start_id: str, target_id: str, max_depth: int = 8) -> List[List[UnifiedEdge]]:
+    def find_attack_paths(self, start_id: str, target_id: str, max_depth: int = 8) -> list[list[UnifiedEdge]]:
         """DFS traversal finding all valid directed attack paths between nodes."""
         if start_id not in self.nodes or target_id not in self.nodes:
             return []
 
-        paths: List[List[UnifiedEdge]] = []
+        paths: list[list[UnifiedEdge]] = []
 
-        def dfs(curr: str, target: str, current_path: List[UnifiedEdge], visited: Set[str], depth: int):
+        def dfs(curr: str, target: str, current_path: list[UnifiedEdge], visited: set[str], depth: int):
             if depth > max_depth:
                 return
             if curr == target and current_path:
@@ -116,7 +117,7 @@ class UnifiedSecurityGraph:
         dfs(start_id, target_id, [], set(), 0)
         return paths
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "node_count": len(self.nodes),
             "edge_count": len(self.edges),

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Union
 
 _ENCODINGS_TO_TRY = ("utf-8-sig", "utf-16", "utf-8", "latin-1")
 
 
-def read_text_lines_multi_encoding(filepath: Union[str, Path]) -> List[str]:
+def read_text_lines_multi_encoding(filepath: str | Path) -> list[str]:
     """
     Read a text file's lines, trying several encodings in order.
 
@@ -18,7 +17,7 @@ def read_text_lines_multi_encoding(filepath: Union[str, Path]) -> List[str]:
     """
     for encoding in _ENCODINGS_TO_TRY:
         try:
-            with open(filepath, "r", encoding=encoding) as f:
+            with open(filepath, encoding=encoding) as f:
                 return f.readlines()
         except (UnicodeDecodeError, UnicodeError):
             continue

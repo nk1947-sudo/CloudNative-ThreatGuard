@@ -5,8 +5,9 @@ correlate into multi-stage incidents, and generate transparent risk assessments.
 """
 
 import unittest
-from cloudnative_threatguard.detection.engine import DetectionEngine
+
 from cloudnative_threatguard.correlation.kubernetes import correlate_incidents
+from cloudnative_threatguard.detection.engine import DetectionEngine
 from cloudnative_threatguard.reporting.risk import RiskScoringEngine, RiskTier
 from cloudnative_threatguard.runtime.events import SecurityEvent
 

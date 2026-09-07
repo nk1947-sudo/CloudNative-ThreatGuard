@@ -3,9 +3,15 @@ Unit tests for CloudGraphGuardAdapter.
 """
 
 import unittest
-from cloudnative_threatguard.cloudgraphguard.models.findings import IAMFinding, FindingType, PrivilegeEscalationVector
+
+from cloudnative_threatguard.cloudgraphguard.models.findings import FindingType, IAMFinding, PrivilegeEscalationVector
 from cloudnative_threatguard.correlation.cross_domain.adapters.cgg_adapter import CloudGraphGuardAdapter
-from cloudnative_threatguard.correlation.cross_domain.models.event import EventSource, EventType, CloudProvider, Severity
+from cloudnative_threatguard.correlation.cross_domain.models.event import (
+    CloudProvider,
+    EventSource,
+    EventType,
+    Severity,
+)
 
 
 class TestCloudGraphGuardAdapter(unittest.TestCase):

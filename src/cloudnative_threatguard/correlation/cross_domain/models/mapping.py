@@ -4,10 +4,11 @@ Represents bindings between Cloud IAM identities (AWS Roles/Users, GCP ServiceAc
 Azure Managed Identities) and Kubernetes runtime identities (Cluster, Namespace, ServiceAccount, Workload).
 """
 
-from typing import List, Dict, Any, Optional
-from enum import Enum
 import uuid
-from pydantic import BaseModel, Field, ConfigDict
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MappingMechanism(str, Enum):
@@ -34,12 +35,12 @@ class IdentityBinding(BaseModel):
     kubernetes_identity: str = Field(description="Resolved Kubernetes RBAC username or group")
     namespace: str = Field(description="Target Kubernetes namespace")
     service_account: str = Field(description="Target Kubernetes ServiceAccount name")
-    workload: Optional[str] = Field(default=None, description="Bound Kubernetes deployment/statefulset")
+    workload: str | None = Field(default=None, description="Bound Kubernetes deployment/statefulset")
     mapping_mechanism: MappingMechanism = Field(default=MappingMechanism.EXPLICIT_CONFIG)
     is_active: bool = True
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump()
 
 
@@ -49,41 +50,41 @@ class IdentityMappingRegistry:
     """
 
     def __init__(self):
-        self._bindings: Dict[str, IdentityBinding] = {}
+        self._bindings: dict[str, IdentityBinding] = {}
 
     def register(self, binding: IdentityBinding) -> IdentityBinding:
         self._bindings[binding.binding_id] = binding
         return binding
 
-    def get_all(self) -> List[IdentityBinding]:
+    def get_all(self) -> list[IdentityBinding]:
         return list(self._bindings.values())
 
-    def find_by_cloud_identity(self, cloud_identity: str) -> List[IdentityBinding]:
+    def find_by_cloud_identity(self, cloud_identity: str) -> list[IdentityBinding]:
         """Find all K8s bindings for a given IAM role/user."""
         return [
             b for b in self._bindings.values()
             if b.cloud_identity.lower() == cloud_identity.lower()
         ]
 
-    def find_by_k8s_workload(self, namespace: str, workload: str) -> List[IdentityBinding]:
+    def find_by_k8s_workload(self, namespace: str, workload: str) -> list[IdentityBinding]:
         """Find cloud identities bound to a specific Kubernetes workload."""
         return [
             b for b in self._bindings.values()
             if b.namespace.lower() == namespace.lower() and b.workload and b.workload.lower() == workload.lower()
         ]
 
-    def find_by_service_account(self, namespace: str, service_account: str) -> List[IdentityBinding]:
+    def find_by_service_account(self, namespace: str, service_account: str) -> list[IdentityBinding]:
         """Find cloud identities associated with a ServiceAccount."""
         return [
             b for b in self._bindings.values()
             if b.namespace.lower() == namespace.lower() and b.service_account.lower() == service_account.lower()
         ]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"bindings": [b.model_dump() for b in self._bindings.values()]}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IdentityMappingRegistry":
+    def from_dict(cls, data: dict[str, Any]) -> "IdentityMappingRegistry":
         reg = cls()
         for b in data.get("bindings", []):
             reg.register(IdentityBinding(**b))

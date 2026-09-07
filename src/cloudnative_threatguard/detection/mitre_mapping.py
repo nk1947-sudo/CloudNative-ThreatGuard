@@ -4,8 +4,8 @@ Provides comprehensive taxonomy covering tactics, techniques, subtechniques,
 data sources, detection rationales, prevention controls, and detection controls.
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, Any, List, Optional
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
@@ -13,18 +13,18 @@ class MitreTechniqueMapping:
     tactic: str
     technique_id: str
     technique_name: str
-    subtechnique_id: Optional[str]
-    subtechnique_name: Optional[str]
+    subtechnique_id: str | None
+    subtechnique_name: str | None
     data_source: str
     detection_rationale: str
     prevention_control: str
     detection_control: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-MITRE_CONTAINER_MATRIX: Dict[str, MitreTechniqueMapping] = {
+MITRE_CONTAINER_MATRIX: dict[str, MitreTechniqueMapping] = {
     "T1190": MitreTechniqueMapping(
         tactic="Initial Access",
         technique_id="T1190",
@@ -215,18 +215,18 @@ MITRE_CONTAINER_MATRIX: Dict[str, MitreTechniqueMapping] = {
 }
 
 
-def get_mitre_mapping(technique_id: str) -> Optional[MitreTechniqueMapping]:
+def get_mitre_mapping(technique_id: str) -> MitreTechniqueMapping | None:
     """Retrieve mapping for a technique or subtechnique ID."""
     if technique_id in MITRE_CONTAINER_MATRIX:
         return MITRE_CONTAINER_MATRIX[technique_id]
     # Check if technique_id is a base technique or subtechnique match
-    for k, v in MITRE_CONTAINER_MATRIX.items():
-        if v.subtechnique_id == technique_id or v.technique_id == technique_id:
-            return v
+    for mapping in MITRE_CONTAINER_MATRIX.values():
+        if mapping.subtechnique_id == technique_id or mapping.technique_id == technique_id:
+            return mapping
     return None
 
 
-def list_tactics() -> List[str]:
+def list_tactics() -> list[str]:
     """Return all unique tactics represented in the matrix."""
     tactics = []
     for m in MITRE_CONTAINER_MATRIX.values():

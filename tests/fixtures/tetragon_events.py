@@ -3,12 +3,12 @@ Shared sample raw Tetragon event payloads, reused across detection/correlation
 tests instead of every test file hand-building the same JSON shapes.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
 def process_exec_event(binary: str, arguments: str = "", namespace: str = "threatguard",
                         pod: str = "sample-app-6c9f", container: str = "web",
-                        pid: int = 4100, uid: int = 10001, time: str = "2026-09-05T12:00:00Z") -> Dict[str, Any]:
+                        pid: int = 4100, uid: int = 10001, time: str = "2026-09-05T12:00:00Z") -> dict[str, Any]:
     """A raw Tetragon process_exec event, as seen by DetectionEngine._handle_process_exec."""
     return {
         "time": time,
@@ -31,7 +31,7 @@ def process_exec_event(binary: str, arguments: str = "", namespace: str = "threa
 def sensitive_file_open_event(path: str = "/var/run/secrets/kubernetes.io/serviceaccount/token",
                                binary: str = "/bin/cat", namespace: str = "threatguard",
                                pod: str = "sample-app-6c9f", container: str = "web",
-                               time: str = "2026-09-05T12:03:00Z") -> Dict[str, Any]:
+                               time: str = "2026-09-05T12:03:00Z") -> dict[str, Any]:
     """A raw Tetragon process_kprobe/security_file_open event."""
     return {
         "time": time,
@@ -53,7 +53,7 @@ def sensitive_file_open_event(path: str = "/var/run/secrets/kubernetes.io/servic
 def outbound_connect_event(daddr: str = "198.51.100.23", dport: int = 4444,
                             binary: str = "/usr/local/bin/python", namespace: str = "threatguard",
                             pod: str = "sample-app-6c9f", container: str = "web",
-                            time: str = "2026-09-05T12:05:00Z") -> Dict[str, Any]:
+                            time: str = "2026-09-05T12:05:00Z") -> dict[str, Any]:
     """A raw Tetragon process_kprobe/sys_enter_connect event."""
     return {
         "time": time,

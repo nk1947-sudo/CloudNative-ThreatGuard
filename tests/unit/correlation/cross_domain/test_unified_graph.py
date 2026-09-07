@@ -3,12 +3,13 @@ Unit tests for UnifiedSecurityGraph.
 """
 
 import unittest
+
 from cloudnative_threatguard.correlation.cross_domain.graph.unified_graph import (
-    UnifiedSecurityGraph,
-    UnifiedNode,
     UnifiedEdge,
+    UnifiedNode,
     UnifiedNodeType,
     UnifiedRelationship,
+    UnifiedSecurityGraph,
 )
 
 

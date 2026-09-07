@@ -4,36 +4,37 @@ Correlates CloudGraphGuard IAM identity risks with ThreatGuard Kubernetes runtim
 building unified multi-stage attack chains across the cloud-to-container boundary.
 """
 
-from typing import List, Dict, Any, Optional, Set
 import uuid
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from cloudnative_threatguard.correlation.cross_domain.models.event import UnifiedSecurityEvent, EventSource, EventType
-from cloudnative_threatguard.correlation.cross_domain.models.mapping import IdentityMappingRegistry, IdentityBinding
+from cloudnative_threatguard.correlation.cross_domain.models.event import EventSource, EventType, UnifiedSecurityEvent
+from cloudnative_threatguard.correlation.cross_domain.models.mapping import IdentityBinding, IdentityMappingRegistry
 
 
 class CorrelatedAttackChain(BaseModel):
     chain_id: str = Field(default_factory=lambda: f"CHAIN-{uuid.uuid4().hex[:8].upper()}")
     title: str
-    cloud_principal: Optional[str] = None
-    cloud_role: Optional[str] = None
-    kubernetes_cluster: Optional[str] = None
-    kubernetes_workload: Optional[str] = None
-    kubernetes_pod: Optional[str] = None
-    service_account: Optional[str] = None
-    stages: List[Dict[str, Any]] = Field(default_factory=list)
-    event_ids: List[str] = Field(default_factory=list)
+    cloud_principal: str | None = None
+    cloud_role: str | None = None
+    kubernetes_cluster: str | None = None
+    kubernetes_workload: str | None = None
+    kubernetes_pod: str | None = None
+    service_account: str | None = None
+    stages: list[dict[str, Any]] = Field(default_factory=list)
+    event_ids: list[str] = Field(default_factory=list)
     composite_risk: float = 0.0
     is_cross_domain: bool = False
 
 
 class CorrelatedCluster(BaseModel):
     cluster_id: str = Field(default_factory=lambda: f"CLUS-{uuid.uuid4().hex[:8].upper()}")
-    binding: Optional[IdentityBinding] = None
-    iam_events: List[UnifiedSecurityEvent] = Field(default_factory=list)
-    runtime_events: List[UnifiedSecurityEvent] = Field(default_factory=list)
-    admission_events: List[UnifiedSecurityEvent] = Field(default_factory=list)
-    attack_chain: Optional[CorrelatedAttackChain] = None
+    binding: IdentityBinding | None = None
+    iam_events: list[UnifiedSecurityEvent] = Field(default_factory=list)
+    runtime_events: list[UnifiedSecurityEvent] = Field(default_factory=list)
+    admission_events: list[UnifiedSecurityEvent] = Field(default_factory=list)
+    attack_chain: CorrelatedAttackChain | None = None
 
 
 class CrossDomainCorrelationEngine:
@@ -42,10 +43,10 @@ class CrossDomainCorrelationEngine:
     resolving relationships through the IdentityMappingRegistry.
     """
 
-    def __init__(self, mapping_registry: Optional[IdentityMappingRegistry] = None):
+    def __init__(self, mapping_registry: IdentityMappingRegistry | None = None):
         self.mapping_registry = mapping_registry or IdentityMappingRegistry()
-        self._events: List[UnifiedSecurityEvent] = []
-        self._seen_event_ids: Set[str] = set()
+        self._events: list[UnifiedSecurityEvent] = []
+        self._seen_event_ids: set[str] = set()
 
     def ingest_event(self, event: UnifiedSecurityEvent) -> bool:
         """Ingest event with automatic deduplication."""
@@ -55,24 +56,24 @@ class CrossDomainCorrelationEngine:
         self._events.append(event)
         return True
 
-    def ingest_events(self, events: List[UnifiedSecurityEvent]) -> int:
+    def ingest_events(self, events: list[UnifiedSecurityEvent]) -> int:
         count = 0
         for e in events:
             if self.ingest_event(e):
                 count += 1
         return count
 
-    def correlate(self) -> List[CorrelatedCluster]:
+    def correlate(self) -> list[CorrelatedCluster]:
         """
         Groups events into cross-domain clusters and builds causal attack chains.
         """
-        clusters: List[CorrelatedCluster] = []
+        clusters: list[CorrelatedCluster] = []
         registered_bindings = self.mapping_registry.get_all()
 
         # Index events by domain attributes
-        iam_by_role: Dict[str, List[UnifiedSecurityEvent]] = {}
-        runtime_by_workload: Dict[str, List[UnifiedSecurityEvent]] = {}
-        admission_by_workload: Dict[str, List[UnifiedSecurityEvent]] = {}
+        iam_by_role: dict[str, list[UnifiedSecurityEvent]] = {}
+        runtime_by_workload: dict[str, list[UnifiedSecurityEvent]] = {}
+        admission_by_workload: dict[str, list[UnifiedSecurityEvent]] = {}
 
         for ev in self._events:
             if ev.source == EventSource.CLOUDGRAPHGUARD:
@@ -86,7 +87,7 @@ class CrossDomainCorrelationEngine:
                     runtime_by_workload.setdefault(key, []).append(ev)
 
         # 1. Correlate using explicit Identity Bindings
-        matched_binding_ids: Set[str] = set()
+        matched_binding_ids: set[str] = set()
         for binding in registered_bindings:
             role_key = binding.cloud_identity.lower()
             workload_key = (binding.workload or "").lower()
@@ -122,9 +123,9 @@ class CrossDomainCorrelationEngine:
         return clusters
 
     def _build_attack_chain(self, cluster: CorrelatedCluster) -> CorrelatedAttackChain:
-        stages: List[Dict[str, Any]] = []
-        event_ids: List[str] = []
-        scores: List[float] = []
+        stages: list[dict[str, Any]] = []
+        event_ids: list[str] = []
+        scores: list[float] = []
 
         binding = cluster.binding
         principal = None

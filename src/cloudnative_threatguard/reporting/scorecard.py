@@ -7,14 +7,14 @@ from actual evidence files. Never uses hardcoded percentages.
 import json
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any
 
 from cloudnative_threatguard.config import settings
 
 TOTAL_SCENARIOS = 7  # RUNTIME-001..007 (cryptomining added as RUNTIME-007)
 
 
-def generate_scorecard() -> Dict[str, Any]:
+def generate_scorecard() -> dict[str, Any]:
     """Computes the scorecard dict from admission/runtime evidence files, without writing it."""
     admission_file = settings.ARTIFACTS_ADMISSION_DIR / "admission-results.json"
     runtime_file = settings.ARTIFACTS_RUNTIME_DIR / "runtime-events.json"
@@ -22,7 +22,7 @@ def generate_scorecard() -> Dict[str, Any]:
     adm_total = adm_blocked = adm_allowed = 0
     adm_rate = 0.0
     if admission_file.exists():
-        with open(admission_file, "r", encoding="utf-8") as f:
+        with open(admission_file, encoding="utf-8") as f:
             adm_data = json.load(f)
             adm_total = adm_data.get("total", 0)
             adm_blocked = adm_data.get("blocked", 0)
@@ -32,9 +32,9 @@ def generate_scorecard() -> Dict[str, Any]:
 
     runtime_detected_rules = set()
     runtime_events = []
-    by_severity: Dict[str, int] = {}
+    by_severity: dict[str, int] = {}
     if runtime_file.exists():
-        with open(runtime_file, "r", encoding="utf-8") as f:
+        with open(runtime_file, encoding="utf-8") as f:
             runtime_events = json.load(f)
             for ev in runtime_events:
                 rule = ev.get("rule_id")
@@ -74,7 +74,7 @@ def generate_scorecard() -> Dict[str, Any]:
     }
 
 
-def write_scorecard(report: Dict[str, Any]) -> list:
+def write_scorecard(report: dict[str, Any]) -> list:
     """Writes the scorecard to both legacy destination paths, returning the list of paths written."""
     destinations = [
         settings.ARTIFACTS_DIR / "security-report.json",
@@ -89,7 +89,7 @@ def write_scorecard(report: Dict[str, Any]) -> list:
     return written
 
 
-def print_summary(report: Dict[str, Any]) -> None:
+def print_summary(report: dict[str, Any]) -> None:
     adm = report["admission"]
     run = report["runtime"]
     print("=" * 75)

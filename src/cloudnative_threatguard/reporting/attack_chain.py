@@ -7,15 +7,15 @@ Transforms correlated security incidents and event sequences into multi-format a
 - Standalone HTML/CSS graphical component
 """
 
-from typing import List, Dict, Any, Optional
 import html
+from typing import Any
 
 
 class AttackChainVisualizer:
     """
     Constructs multi-format visualizations of Kubernetes attack progression chains.
     """
-    def __init__(self, incident: Dict[str, Any]):
+    def __init__(self, incident: dict[str, Any]):
         self.incident = incident
         self.incident_id = incident.get("incident_id", "#TG-UNKNOWN")
         self.title = incident.get("title", "Security Incident")
@@ -25,7 +25,7 @@ class AttackChainVisualizer:
         self.events = incident.get("events", [])
         self.nodes = self._extract_nodes()
 
-    def _extract_nodes(self) -> List[Dict[str, Any]]:
+    def _extract_nodes(self) -> list[dict[str, Any]]:
         nodes = []
         # If incident already has structured attack_chain, use it
         if "attack_chain" in self.incident and self.incident["attack_chain"]:
@@ -61,7 +61,7 @@ class AttackChainVisualizer:
             })
         return nodes
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """
         Returns a structured graph payload with nodes and directed links.
         """
@@ -136,10 +136,10 @@ class AttackChainVisualizer:
             return f"┌── [ {self.incident_id} ] (No attack steps recorded) ──┐"
 
         lines = [
-            f"╔══════════════════════════════════════════════════════════════════════════════════╗",
+            "╔══════════════════════════════════════════════════════════════════════════════════╗",
             f"║ ThreatGuard Attack Chain: {self.incident_id:<15} Workload: {self.namespace}/{self.pod:<18} ║",
             f"║ Overall Severity: {self.severity:<10} Total Steps: {len(self.nodes):<33} ║",
-            f"╚══════════════════════════════════════════════════════════════════════════════════╝"
+            "╚══════════════════════════════════════════════════════════════════════════════════╝"
         ]
 
         for idx, n in enumerate(self.nodes):
@@ -151,7 +151,7 @@ class AttackChainVisualizer:
                 lines.append(f"  │   Process: {n['process']}")
             if n.get("timestamp"):
                 lines.append(f"  │   Time:    {n['timestamp']}")
-            lines.append(f"  └──")
+            lines.append("  └──")
 
             if idx < len(self.nodes) - 1:
                 lines.append("        │")
