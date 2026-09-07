@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
+from .workload_resolver import resolve_workload_owner
+
 
 class RecommendationPriority(str, Enum):
     CRITICAL = "CRITICAL"
@@ -24,6 +26,7 @@ class ActionCategory(str, Enum):
     CONTAINMENT = "CONTAINMENT"
     NODE_SECURITY = "NODE_SECURITY"
     HARDENING = "HARDENING"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
 
 
 @dataclass
@@ -37,6 +40,7 @@ class ResponseRecommendation:
     execution_command: str
     blast_radius: str
     reversibility: str
+    requires_manual_review: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -54,10 +58,17 @@ class ResponseRecommendationEngine:
         techniques: list[str],
         severity: str = "HIGH",
         node_name: str = "threatguard-local-control-plane",
-        container_name: str = "app"
+        container_name: str = "app",
+        owner_references: list[dict[str, Any]] | None = None,
     ) -> list[ResponseRecommendation]:
         recs: list[ResponseRecommendation] = []
         rec_counter = 1
+
+        # Resolve the Pod's actual owning controller before generating any
+        # recommendation that targets a Deployment/StatefulSet/DaemonSet --
+        # a Pod name (e.g. "web-app-7c9d8f6d7b-x2abc") is not that resource's
+        # name (e.g. "web-app") and must never be substituted for it directly.
+        workload = resolve_workload_owner(namespace, pod_name, owner_references)
 
         # 1. Forensic Acquisition (Always recommended first before modifying state)
         recs.append(ResponseRecommendation(
@@ -108,17 +119,35 @@ class ResponseRecommendationEngine:
 
         # 3. Credential Rotation (T1552.007 SA Token or /etc/shadow access)
         if "T1552.007" in techniques or "T1003" in techniques:
-            recs.append(ResponseRecommendation(
-                recommendation_id=f"REC-{rec_counter:02d}-REVOKE-TOKEN",
-                title="Revoke Compromised ServiceAccount Credentials & Disable Auto-Mount",
-                priority=RecommendationPriority.CRITICAL.value,
-                category=ActionCategory.CREDENTIALS.value,
-                rationale="ServiceAccount JWT token was accessed via unauthorized read; token must be invalidated to prevent cluster API pivoting.",
-                dry_run_command=f"kubectl patch deployment {pod_name} -n {namespace} --dry-run=client -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"automountServiceAccountToken\":false}}}}}}}}'",
-                execution_command=f"kubectl patch deployment {pod_name} -n {namespace} -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"automountServiceAccountToken\":false}}}}}}}}'",
-                blast_radius=f"Removes default API token mount on subsequent rollout of {pod_name}.",
-                reversibility="Reversible: patch automountServiceAccountToken back to true if required."
-            ))
+            if workload.remediation_target:
+                recs.append(ResponseRecommendation(
+                    recommendation_id=f"REC-{rec_counter:02d}-REVOKE-TOKEN",
+                    title=f"Revoke Compromised ServiceAccount Credentials & Disable Auto-Mount on {workload.remediation_target}",
+                    priority=RecommendationPriority.CRITICAL.value,
+                    category=ActionCategory.CREDENTIALS.value,
+                    rationale="ServiceAccount JWT token was accessed via unauthorized read; token must be invalidated to prevent cluster API pivoting.",
+                    dry_run_command=f"kubectl patch {workload.remediation_target} -n {namespace} --dry-run=client -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"automountServiceAccountToken\":false}}}}}}}}'",
+                    execution_command=f"kubectl patch {workload.remediation_target} -n {namespace} -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"automountServiceAccountToken\":false}}}}}}}}'",
+                    blast_radius=f"Removes default API token mount on subsequent rollout of {workload.remediation_target}.",
+                    reversibility="Reversible: patch automountServiceAccountToken back to true if required."
+                ))
+            else:
+                recs.append(ResponseRecommendation(
+                    recommendation_id=f"REC-{rec_counter:02d}-REVOKE-TOKEN-MANUAL",
+                    title=f"Manually Revoke Compromised ServiceAccount Credentials for Pod {pod_name}",
+                    priority=RecommendationPriority.CRITICAL.value,
+                    category=ActionCategory.MANUAL_REVIEW.value,
+                    rationale=(
+                        "ServiceAccount JWT token was accessed via unauthorized read, but the "
+                        f"owning controller could not be safely determined ({workload.manual_reason}) "
+                        "so no automatic patch command was generated."
+                    ),
+                    dry_run_command=f"kubectl get pod {pod_name} -n {namespace} -o jsonpath='{{.metadata.ownerReferences}}'",
+                    execution_command=f"# Manual remediation required: identify the controller owning pod {pod_name} in {namespace} and disable automountServiceAccountToken on it directly.",
+                    blast_radius="N/A (no automatic action taken).",
+                    reversibility="N/A (no automatic action taken).",
+                    requires_manual_review=True,
+                ))
             rec_counter += 1
 
         # 4. Suspected Node Compromise / Escape to Host (T1611 or SYS_ADMIN)
@@ -137,17 +166,35 @@ class ResponseRecommendationEngine:
             rec_counter += 1
 
         # 5. Controlled Workload Termination / Restart
-        recs.append(ResponseRecommendation(
-            recommendation_id=f"REC-{rec_counter:02d}-CONTROLLED-DRAIN",
-            title=f"Scale Down Compromised Deployment {pod_name}",
-            priority=RecommendationPriority.MEDIUM.value,
-            category=ActionCategory.CONTAINMENT.value,
-            rationale="Terminates rogue container instances once forensics have been captured to eradicate active adversary persistence.",
-            dry_run_command=f"kubectl scale deployment {pod_name} -n {namespace} --replicas=0 --dry-run=client",
-            execution_command=f"kubectl scale deployment {pod_name} -n {namespace} --replicas=0",
-            blast_radius=f"Stops all running replica instances of {pod_name} in namespace {namespace}.",
-            reversibility=f"Reversible: run 'kubectl scale deployment {pod_name} -n {namespace} --replicas=1'"
-        ))
+        if workload.remediation_target:
+            recs.append(ResponseRecommendation(
+                recommendation_id=f"REC-{rec_counter:02d}-CONTROLLED-DRAIN",
+                title=f"Scale Down Compromised {workload.owner_kind} {workload.owner_name}",
+                priority=RecommendationPriority.MEDIUM.value,
+                category=ActionCategory.CONTAINMENT.value,
+                rationale="Terminates rogue container instances once forensics have been captured to eradicate active adversary persistence.",
+                dry_run_command=f"kubectl scale {workload.remediation_target} -n {namespace} --replicas=0 --dry-run=client",
+                execution_command=f"kubectl scale {workload.remediation_target} -n {namespace} --replicas=0",
+                blast_radius=f"Stops all running replica instances of {workload.remediation_target} in namespace {namespace}.",
+                reversibility=f"Reversible: run 'kubectl scale {workload.remediation_target} -n {namespace} --replicas=1'"
+            ))
+        else:
+            recs.append(ResponseRecommendation(
+                recommendation_id=f"REC-{rec_counter:02d}-CONTROLLED-DRAIN-MANUAL",
+                title=f"Manually Terminate Compromised Pod {pod_name}",
+                priority=RecommendationPriority.MEDIUM.value,
+                category=ActionCategory.MANUAL_REVIEW.value,
+                rationale=(
+                    "Rogue container instances should be terminated once forensics have been "
+                    f"captured, but the owning controller could not be safely determined "
+                    f"({workload.manual_reason}), so no automatic scale-down command was generated."
+                ),
+                dry_run_command=f"kubectl get pod {pod_name} -n {namespace} -o jsonpath='{{.metadata.ownerReferences}}'",
+                execution_command=f"# Manual remediation required: confirm ownership of pod {pod_name} in {namespace} before terminating it directly with 'kubectl delete pod {pod_name} -n {namespace}'.",
+                blast_radius="N/A (no automatic action taken).",
+                reversibility="N/A (no automatic action taken; a standalone Pod deleted directly will not be recreated).",
+                requires_manual_review=True,
+            ))
         rec_counter += 1
 
         # 6. Policy Hardening (Gatekeeper Admission Enforcement)
