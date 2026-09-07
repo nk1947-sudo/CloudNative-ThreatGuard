@@ -4,9 +4,11 @@ Unifies CloudGraphGuard IAM compromise evidence with ThreatGuard runtime detecti
 Maintains separate remediation proposals for Cloud IAM and Kubernetes domains (dry-run only).
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -193,8 +195,12 @@ class UnifiedIncidentManager:
             remediation_proposals=remediations,
         )
 
-        self._incidents[incident.incident_id] = incident
+        self.register(incident)
         return incident
+
+    def register(self, incident: CrossDomainIncident) -> None:
+        """Adds an already-built incident (e.g. one reloaded via ``load()``) to this manager."""
+        self._incidents[incident.incident_id] = incident
 
     def get_incident(self, incident_id: str) -> CrossDomainIncident | None:
         return self._incidents.get(incident_id)
@@ -211,3 +217,35 @@ class UnifiedIncidentManager:
         inc.status = new_status
         inc.updated_at = datetime.now(timezone.utc).isoformat()
         return True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"incidents": [i.model_dump(mode="json") for i in self._incidents.values()]}
+
+    def save(self, path: str | Path) -> None:
+        """
+        Persists all tracked incidents to a JSON file. This is what lets a
+        separate, long-running process (the Prometheus metrics exporter)
+        observe incident state produced by another process (the cross-domain
+        demo, or a future live pipeline) -- the two do not share memory.
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "UnifiedIncidentManager":
+        """
+        Loads a previously saved incident collection. Returns an empty
+        manager (not an error) if the file doesn't exist yet -- "no
+        cross-domain incidents have been recorded" is a legitimate, honest
+        state, not a failure.
+        """
+        manager = cls()
+        path = Path(path)
+        if not path.exists():
+            return manager
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for raw in data.get("incidents", []):
+            incident = CrossDomainIncident(**raw)
+            manager.register(incident)
+        return manager

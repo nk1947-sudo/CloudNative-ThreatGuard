@@ -166,8 +166,14 @@ def build_demo_scenario() -> dict[str, Any]:
     risk_assessment = CrossDomainRiskEvaluator.evaluate_cluster(primary_cluster)
 
     # 6. Generate Cross-Domain Incident
-    incident_manager = UnifiedIncidentManager()
+    # Load any incidents recorded by previous demo runs (or a future live
+    # pipeline) so the persisted collection accumulates rather than being
+    # overwritten -- this is what the metrics exporter reads to report real,
+    # changing counts instead of a static snapshot of a single run.
+    incidents_file = settings.ARTIFACTS_FORENSICS_DIR / "cross-domain-incidents.json"
+    incident_manager = UnifiedIncidentManager.load(incidents_file)
     incident = incident_manager.create_from_cluster(primary_cluster)
+    incident_manager.save(incidents_file)
 
     # 7. Construct Unified Security Graph
     graph = UnifiedSecurityGraph()

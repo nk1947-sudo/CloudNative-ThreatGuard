@@ -2,7 +2,9 @@
 Unit tests for CrossDomainIncident and UnifiedIncidentManager.
 """
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from cloudnative_threatguard.correlation.cross_domain.engine.correlation_engine import (
     CorrelatedAttackChain,
@@ -105,6 +107,93 @@ class TestUnifiedIncident(unittest.TestCase):
         updated = manager.get_incident(incident.incident_id)
         self.assertIsNotNone(updated)
         self.assertEqual(updated.status, IncidentStatus.INVESTIGATING)
+
+
+class TestUnifiedIncidentManagerPersistence(unittest.TestCase):
+    """
+    Persistence is what lets a separate process (the metrics exporter) see
+    incidents created by another process (the demo / a future live pipeline)
+    -- without it, cross-domain metrics have no real state to reflect.
+    """
+
+    def _make_manager_with_one_incident(self) -> UnifiedIncidentManager:
+        binding = IdentityBinding(
+            cloud_provider="aws",
+            cloud_identity="arn:aws:iam::123456789012:role/eks-deployer-role",
+            cluster="threatguard-cluster",
+            kubernetes_identity="threatguard-deployer",
+            namespace="threatguard",
+            service_account="threatguard-workload-sa",
+            workload="threatguard-target-pod",
+            mapping_mechanism=MappingMechanism.EKS_ACCESS_ENTRY,
+        )
+        cluster = CorrelatedCluster(
+            binding=binding,
+            iam_events=[
+                UnifiedSecurityEvent(
+                    source=EventSource.CLOUDGRAPHGUARD,
+                    event_type=EventType.IAM_RISK,
+                    provider=CloudProvider.AWS,
+                    principal_arn="arn:aws:iam::123456789012:user/developer",
+                    severity=Severity.CRITICAL,
+                    risk_score=90.0,
+                    description="Privilege escalation via PassRole",
+                )
+            ],
+            runtime_events=[
+                UnifiedSecurityEvent(
+                    source=EventSource.THREATGUARD,
+                    event_type=EventType.RUNTIME_DETECTION,
+                    provider=CloudProvider.KUBERNETES,
+                    pod="threatguard-target-pod-12345",
+                    severity=Severity.CRITICAL,
+                    risk_score=94.0,
+                    description="Service account token accessed",
+                )
+            ],
+            attack_chain=CorrelatedAttackChain(title="Cross-Domain Attack Chain", composite_risk=94.0, is_cross_domain=True),
+        )
+        manager = UnifiedIncidentManager()
+        manager.create_from_cluster(cluster)
+        return manager
+
+    def test_save_then_load_round_trips_incident_data(self):
+        manager = self._make_manager_with_one_incident()
+        original = manager.list_incidents()[0]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cross-domain-incidents.json"
+            manager.save(path)
+            self.assertTrue(path.exists())
+
+            reloaded = UnifiedIncidentManager.load(path)
+
+        reloaded_incidents = reloaded.list_incidents()
+        self.assertEqual(len(reloaded_incidents), 1)
+        self.assertEqual(reloaded_incidents[0].incident_id, original.incident_id)
+        self.assertEqual(reloaded_incidents[0].severity, original.severity)
+        self.assertEqual(reloaded_incidents[0].evidence_summary, original.evidence_summary)
+
+    def test_load_missing_file_returns_empty_manager_not_an_error(self):
+        manager = UnifiedIncidentManager.load("/nonexistent/path/incidents.json")
+        self.assertEqual(manager.list_incidents(), [])
+
+    def test_save_append_load_grows_the_persisted_collection(self):
+        """Mirrors how the offline demo accumulates incidents across runs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "cross-domain-incidents.json"
+
+            first_manager = self._make_manager_with_one_incident()
+            first_manager.save(path)
+            self.assertEqual(len(UnifiedIncidentManager.load(path).list_incidents()), 1)
+
+            combined = UnifiedIncidentManager.load(path)
+            second_manager = self._make_manager_with_one_incident()
+            for incident in second_manager.list_incidents():
+                combined.register(incident)
+            combined.save(path)
+
+            self.assertEqual(len(UnifiedIncidentManager.load(path).list_incidents()), 2)
 
 
 if __name__ == "__main__":

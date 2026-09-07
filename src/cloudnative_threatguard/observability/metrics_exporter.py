@@ -8,6 +8,7 @@ import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from cloudnative_threatguard.config import settings
+from cloudnative_threatguard.reporting.cross_domain_metrics import compute_snapshot, load_incidents
 
 PORT = settings.EXPORTER_PORT
 
@@ -89,37 +90,46 @@ class MetricsHandler(BaseHTTPRequestHandler):
         lines.append(f"threatguard_scenarios_detected {runtime_stats.get('detected', 7)}")
 
         # 4. Cross-Domain Cloud Security Overview (ThreatGuard + CloudGraphGuard)
-        # NOTE: these values are static placeholders, not derived from any evidence
-        # file (unlike the admission/runtime metrics above). Tracked as a known
-        # limitation -- see docs/architecture/architecture-audit.md.
-        lines.append("# HELP threatguard_cloud_iam_risks_total Total Cloud IAM security findings from CloudGraphGuard")
+        # Derived from persisted CrossDomainIncident objects (written by the
+        # cross-domain demo / a future live pipeline) via
+        # reporting.cross_domain_metrics -- never hardcoded. With no
+        # persisted incidents yet, every value below is honestly 0.
+        incidents_file = settings.ARTIFACTS_FORENSICS_DIR / "cross-domain-incidents.json"
+        snapshot = compute_snapshot(load_incidents(incidents_file))
+
+        lines.append("# HELP threatguard_cross_domain_correlations_total Total cross-domain incidents ever correlated (cumulative)")
+        lines.append("# TYPE threatguard_cross_domain_correlations_total counter")
+        lines.append(f"threatguard_cross_domain_correlations_total {snapshot.total_correlations}")
+
+        lines.append("# HELP threatguard_cloud_iam_risks_total Cloud IAM security findings contributing to incidents, by incident severity")
         lines.append("# TYPE threatguard_cloud_iam_risks_total gauge")
-        lines.append('threatguard_cloud_iam_risks_total{severity="critical"} 12')
-        lines.append('threatguard_cloud_iam_risks_total{severity="high"} 8')
+        for sev, count in snapshot.iam_risks_by_severity.items():
+            lines.append(f'threatguard_cloud_iam_risks_total{{severity="{sev}"}} {count}')
 
-        lines.append("# HELP threatguard_cloud_runtime_threats_total Total Kubernetes runtime threats from ThreatGuard")
+        lines.append("# HELP threatguard_cloud_runtime_threats_total Kubernetes runtime threats contributing to incidents, by incident severity")
         lines.append("# TYPE threatguard_cloud_runtime_threats_total gauge")
-        lines.append('threatguard_cloud_runtime_threats_total{severity="critical"} 4')
+        for sev, count in snapshot.runtime_threats_by_severity.items():
+            lines.append(f'threatguard_cloud_runtime_threats_total{{severity="{sev}"}} {count}')
 
-        lines.append("# HELP threatguard_open_incidents_total Total open cross-domain security incidents")
+        lines.append("# HELP threatguard_open_incidents_total Current open cross-domain security incidents")
         lines.append("# TYPE threatguard_open_incidents_total gauge")
-        lines.append("threatguard_open_incidents_total 3")
+        lines.append(f"threatguard_open_incidents_total {snapshot.open_incidents}")
 
-        lines.append("# HELP threatguard_exploitable_attack_paths_total Number of traversable cross-domain attack paths")
+        lines.append("# HELP threatguard_exploitable_attack_paths_total Currently open incidents with a realized cloud-identity-to-Kubernetes path")
         lines.append("# TYPE threatguard_exploitable_attack_paths_total gauge")
-        lines.append("threatguard_exploitable_attack_paths_total 7")
+        lines.append(f"threatguard_exploitable_attack_paths_total {snapshot.exploitable_attack_paths}")
 
-        lines.append("# HELP threatguard_high_risk_principals_total High risk IAM principals identified")
+        lines.append("# HELP threatguard_high_risk_principals_total Distinct high/critical-severity IAM principals with an open incident")
         lines.append("# TYPE threatguard_high_risk_principals_total gauge")
-        lines.append("threatguard_high_risk_principals_total 2")
+        lines.append(f"threatguard_high_risk_principals_total {snapshot.high_risk_principals}")
 
-        lines.append("# HELP threatguard_high_risk_workloads_total High risk Kubernetes workloads identified")
+        lines.append("# HELP threatguard_high_risk_workloads_total Distinct high/critical-severity Kubernetes workloads with an open incident")
         lines.append("# TYPE threatguard_high_risk_workloads_total gauge")
-        lines.append("threatguard_high_risk_workloads_total 2")
+        lines.append(f"threatguard_high_risk_workloads_total {snapshot.high_risk_workloads}")
 
-        lines.append("# HELP threatguard_sensitive_resources_exposed_total Number of sensitive cloud/k8s resources at risk")
+        lines.append("# HELP threatguard_sensitive_resources_exposed_total Distinct resources named in open incidents' remediation proposals")
         lines.append("# TYPE threatguard_sensitive_resources_exposed_total gauge")
-        lines.append("threatguard_sensitive_resources_exposed_total 3")
+        lines.append(f"threatguard_sensitive_resources_exposed_total {snapshot.sensitive_resources_exposed}")
 
         return "\n".join(lines) + "\n"
 
