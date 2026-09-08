@@ -237,11 +237,21 @@ Severity Breakdown:   CRITICAL: 3 | HIGH: 2 | MEDIUM: 1
 
 ## Observability — Prometheus & Grafana
 
-- **Prometheus Exporter**: Exposes real-time metrics on port `9100`:
+- **Prometheus Exporter**: Exposes real-time metrics on port `9100`, all derived live from actual
+  admission/runtime/incident state on every scrape -- none are hardcoded placeholders:
   - `threatguard_admission_enforcement_rate`
   - `threatguard_admission_blocked_total`
   - `threatguard_runtime_detections_total{rule_id, severity, technique}`
   - `threatguard_detection_rate`
+  - **Cross-Domain Cloud Security** (from persisted `CrossDomainIncident` records, see
+    `reporting/cross_domain_metrics.py`):
+    - `threatguard_cross_domain_correlations_total` (counter) — every cross-domain incident ever recorded
+    - `threatguard_open_incidents_total`, `threatguard_exploitable_attack_paths_total`,
+      `threatguard_high_risk_principals_total`, `threatguard_high_risk_workloads_total`,
+      `threatguard_sensitive_resources_exposed_total` (gauges) — current open-incident state
+    - `threatguard_cloud_iam_risks_total{severity}`, `threatguard_cloud_runtime_threats_total{severity}`
+      (gauges) — bucketed by each *contributing finding's own* severity (preserved through correlation),
+      not the incident's overall aggregated severity
 - **Grafana Dashboard**: Production-ready dashboard titled **"CloudNative ThreatGuard — Security Operations Dashboard"** (`observability/grafana/dashboards/threatguard-security-operations.json`):
   - Admission Enforcement Gauge
   - eBPF Runtime Detection Rate Gauge

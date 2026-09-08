@@ -82,6 +82,15 @@ Every correlated incident progresses through a structured SOC lifecycle:
 
 ThreatGuard adheres to a **Recommend-First** architecture. No destructive actions (such as pod deletion or cluster mutations) are executed automatically without human approval.
 
+Every generated command targets the Pod's actual owning controller (Deployment/StatefulSet/DaemonSet),
+never the Pod's own unique instance name -- `reporting/workload_resolver.py` resolves this from
+`ownerReferences` when available, optionally via a live, read-only `kubectl` lookup
+(`threatguard remediate <id> --live-k8s`; see
+[docs/security/kubernetes-ownership-rbac.md](../security/kubernetes-ownership-rbac.md) for the minimum
+RBAC), or falls back to a documented naming-pattern heuristic. When none of those can confidently
+determine ownership (a Job/CronJob-owned Pod, ambiguous owner data, or an unrecognized standalone Pod),
+ThreatGuard emits a manual-remediation recommendation instead of guessing.
+
 ### Workflow 1: Workload Quarantine (Zero-Trust Isolation)
 When an interactive shell or lateral movement probe is confirmed, apply an ingress/egress quarantine NetworkPolicy:
 ```bash

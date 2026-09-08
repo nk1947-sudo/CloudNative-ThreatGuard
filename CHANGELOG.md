@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] -- Repository restructure (2026-09-05/06)
+## [Unreleased] -- Repository restructure (2026-09-05/07)
 
 A full repository restructure into an installable Python package with a single canonical CLI,
 consolidated deployment manifests, unified tests, and standard OSS repository files. Package version
@@ -34,6 +34,16 @@ bumped to `2.0.0` to reflect the scale of the structural and import-path changes
   now testable programmatically, not just runnable as a script.
 - `tests/fixtures/tetragon_events.py`: shared sample raw Tetragon event builders.
 - `app/secure-web-app/.dockerignore`, scoped to the sample app's own build context.
+- `CrossDomainIncident.contributing_findings`: preserves each source event's own
+  `source`/`event_type`/`severity`/`detection_rule`/`technique`/`evidence` through correlation,
+  additive to the existing `evidence_summary` counts.
+- Optional live Kubernetes ownership resolution for `threatguard remediate`: a new `--live-k8s` flag
+  resolves a Pod's owning Deployment/StatefulSet/DaemonSet authoritatively via a read-only `kubectl get`
+  lookup (`reporting/workload_resolver.py`'s `KubernetesOwnershipClient` protocol and
+  `KubectlOwnershipClient`), including a real Pod -> ReplicaSet -> Deployment lookup instead of
+  string-parsing the ReplicaSet name. Fully opt-in and dependency-injected -- every other command, and
+  `remediate` without the flag, remain kubeconfig-free. `docs/security/kubernetes-ownership-rbac.md`
+  documents the minimum required (read-only, namespace-scoped) RBAC.
 
 ### Changed
 - Repository layout: `runtime/`, `correlation/`, `cloudgraphguard/` (three loose top-level Python
@@ -70,6 +80,30 @@ bumped to `2.0.0` to reflect the scale of the structural and import-path changes
   `protocol`. Destination IPs rendered as `"unknown"` even when the underlying detection had the data.
 - `.gitignore`: `artifacts/threatguard-state.json` sits directly in `artifacts/` and wasn't covered by
   any existing rule (only subdirectories were ignored); added.
+- **Hardcoded cross-domain Prometheus metrics**: `threatguard_cloud_iam_risks_total`,
+  `threatguard_open_incidents_total`, and the rest of the "Cross-Domain Cloud Security Overview" block
+  were static placeholder values. They're now derived from persisted `CrossDomainIncident` records via
+  `reporting/cross_domain_metrics.py`, using correct Prometheus types (counter for
+  `threatguard_cross_domain_correlations_total`, gauges for the rest) and bounded-cardinality
+  (`severity`-only) labels.
+- **Pod-name-vs-Deployment-name in remediation commands**: `reporting/recommendations.py` generated
+  `kubectl patch/scale deployment <pod_name>` against a resource that doesn't exist, because a
+  Deployment-managed Pod's name (`<deployment>-<hash>-<suffix>`) was used as if it were the Deployment's
+  own name. `reporting/workload_resolver.py` now resolves the real owning controller (preferring
+  `ownerReferences`, then an optional live lookup, then a documented naming-pattern fallback) and refuses
+  to guess -- emitting a manual-remediation recommendation instead -- for Jobs/CronJobs, ambiguous owner
+  data, or unrecognized standalone Pods.
+- **NetworkPolicy quarantine selecting by Pod name**: the same engine's network-isolation recommendation
+  built a `podSelector` from the unique Pod instance name, which no pod is ever labeled with, so it
+  silently matched and quarantined nothing. It now selects by the resolved workload name.
+- **Cross-domain metrics bucketed by incident severity, not each finding's own severity**:
+  `iam_risks_by_severity`/`runtime_threats_by_severity` counted every contributing IAM/runtime finding
+  under the incident's single aggregated severity, so a HIGH-severity incident with LOW/MEDIUM/HIGH source
+  findings reported all of them as HIGH. `contributing_findings` (see Added) now preserves each finding's
+  own severity through correlation, and both metrics bucket by it.
+- `tests/unit/correlation/cross_domain/test_deterministic_demo.py` wrote a real cross-domain incident
+  into the repo's actual `artifacts/forensics/` directory on every test run, silently accumulating state
+  across CI runs; isolated behind a temporary directory.
 
 ### Removed
 - `threatguard` (bash launcher), `threatguard.py` (shim) -- replaced by the installed `threatguard`
@@ -82,11 +116,10 @@ bumped to `2.0.0` to reflect the scale of the structural and import-path changes
 - `scripts/generate-report.py` -- logic moved into `src/cloudnative_threatguard/reporting/scorecard.py`,
   exposed as `threatguard report scorecard`.
 
-### Known limitations carried forward (not fixed in this pass)
-- `observability/metrics_exporter.py`'s "Cross-Domain Cloud Security Overview" Prometheus metrics
-  (`threatguard_cloud_iam_risks_total`, `threatguard_open_incidents_total`, etc.) are still static
-  placeholder values, not derived from any evidence file -- flagged inline with a comment.
-- `reporting/recommendations.py`'s generated `kubectl patch/scale deployment <pod_name>` commands still
-  use the raw pod name rather than resolving the owning Deployment name.
+### Known limitations carried forward
 - `correlation/kubernetes.py` and `correlation/cross_domain/` remain two separate implementations with
   different event/severity models; unifying them is a larger semantic change than this pass covers.
+- Live Kubernetes ownership resolution (`--live-k8s`) is opt-in and off by default; the incident schema
+  `cmd_remediate` reads today has no `owner_references` field (raw Tetragon telemetry never carries owner
+  metadata), so in practice the CLI's default path still resolves ownership via the naming-pattern
+  fallback. It has been tested only against a mocked `KubernetesOwnershipClient`, never a real cluster.
