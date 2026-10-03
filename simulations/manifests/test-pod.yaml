@@ -11,15 +11,21 @@ spec:
   hostPID: false
   hostIPC: false
   hostNetwork: false
+  # The target needs no Kubernetes API access; mounting a token would only
+  # give a compromised process something to steal.
+  automountServiceAccountToken: false
   securityContext:
     runAsNonRoot: true
     runAsUser: 10001
+    runAsGroup: 10001
     seccompProfile:
       type: RuntimeDefault
   containers:
     - name: simulation-target
       image: alpine:3.20
-      command: ["/bin/sh", "-c", "sleep 86400"]
+      # Run the long-lived process directly. A shell wrapper would be killed by
+      # the shell-execution TracingPolicy whenever the pod starts under enforcement.
+      command: ["/bin/sleep", "86400"]
       securityContext:
         allowPrivilegeEscalation: false
         privileged: false

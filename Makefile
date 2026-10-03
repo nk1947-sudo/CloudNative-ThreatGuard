@@ -8,7 +8,7 @@ SHELL := /bin/bash
 
 .PHONY: help install test test-admission lint format typecheck validate \
         build cluster-up cluster-down install-security deploy simulate \
-        evidence security-test dashboard demo-cloud verify clean
+        evidence security-test security-test-demo dashboard demo-cloud verify verify-live clean
 
 help: ## Display this help message
 	@echo "======================================================================"
@@ -59,14 +59,17 @@ install-security: ## Install OPA Gatekeeper, Tetragon, and policies
 deploy: ## Deploy hardened sample application and network policy
 	@bash scripts/deploy-app.sh
 
-simulate: ## Execute all attack simulation scenarios
-	@bash simulations/run_simulations.sh
+simulate: ## Run all attack scenarios live against the target pod
+	@bash simulations/run_simulations.sh --mode live
 
 evidence: ## Consolidate security evidence and generate final report
 	@bash scripts/collect-evidence.sh
 
-security-test: ## Run the complete 11-step end-to-end security test harness
-	@bash scripts/run-security-validation.sh
+security-test: ## Live 11-step validation (needs a cluster; BLOCKED if prerequisites are missing)
+	@bash scripts/run-security-validation.sh --mode live
+
+security-test-demo: ## Simulated validation on fixtures (labelled SIMULATED, never live acceptance)
+	@bash scripts/run-security-validation.sh --mode demo
 
 dashboard: ## Run the Prometheus telemetry exporter on port 9100
 	python -m cloudnative_threatguard.observability.metrics_exporter
@@ -74,8 +77,11 @@ dashboard: ## Run the Prometheus telemetry exporter on port 9100
 demo-cloud: ## Run deterministic cross-domain cloud security demo
 	@threatguard demo cross-domain
 
-verify: ## Run comprehensive end-to-end platform verification (all components)
+verify: ## Local platform verification (static and in-process checks)
 	@threatguard verify
+
+verify-live: ## Verify the running cluster, deployed service and Prometheus
+	@threatguard verify --live
 
 clean: ## Clean up local artifacts and temporary files
 	@rm -rf artifacts/admission/*.log artifacts/runtime/*.json artifacts/metrics/*.prom artifacts/reports/*.json

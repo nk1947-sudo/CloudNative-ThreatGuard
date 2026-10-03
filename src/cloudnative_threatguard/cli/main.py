@@ -334,9 +334,9 @@ class ThreatGuardCLI:
         return 0 if report.all_passed else 1
 
     def cmd_verify(self, args) -> int:
-        """Runs the full end-to-end platform verification."""
+        """Runs platform verification (local static checks, or --live against the cluster)."""
         from cloudnative_threatguard.cli.verify import run_verification
-        return run_verification()
+        return run_verification(live=getattr(args, "live", False))
 
     def cmd_demo_cross_domain(self, args) -> int:
         """Runs the deterministic, offline cross-domain (CloudGraphGuard + ThreatGuard) demo."""
@@ -388,7 +388,11 @@ def build_parser() -> argparse.ArgumentParser:
     adm_sub = adm_parser.add_subparsers(dest="adm_command", help="Admission action")
     adm_sub.add_parser("validate", help="Validate positive/negative manifests against Gatekeeper Rego policies")
 
-    subparsers.add_parser("verify", help="Run the full end-to-end platform verification")
+    verify_parser = subparsers.add_parser("verify", help="Verify the platform (local checks by default)")
+    verify_parser.add_argument(
+        "--live", action="store_true",
+        help="Query the running cluster, deployed service and Prometheus instead of running local checks",
+    )
 
     demo_parser = subparsers.add_parser("demo", help="Run offline demonstrations")
     demo_sub = demo_parser.add_subparsers(dest="demo_command", help="Demo to run")
