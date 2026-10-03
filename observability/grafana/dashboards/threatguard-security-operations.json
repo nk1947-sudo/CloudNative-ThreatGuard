@@ -72,7 +72,9 @@
         {
           "expr": "threatguard_evidence_info",
           "legendFormat": "{{origin}}",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Evidence Origin (live / demo / unknown)",
@@ -136,7 +138,9 @@
         {
           "expr": "threatguard_evidence_age_seconds",
           "legendFormat": "age",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Evidence Age",
@@ -209,7 +213,9 @@
         {
           "expr": "threatguard_collector_up",
           "legendFormat": "collector",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Sensor Collector",
@@ -282,7 +288,9 @@
         {
           "expr": "min(threatguard_artifact_valid)",
           "legendFormat": "artifacts",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Evidence Artifacts",
@@ -357,7 +365,9 @@
         {
           "expr": "threatguard_admission_enforcement_rate",
           "legendFormat": "Admission Enforcement",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Gatekeeper Admission Enforcement Rate",
@@ -420,10 +430,12 @@
         {
           "expr": "threatguard_detection_rate",
           "legendFormat": "Runtime Detection Rate",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
-      "title": "Demo Trace Detection Rate",
+      "title": "Scenario Pass Rate",
       "type": "gauge"
     },
     {
@@ -473,7 +485,9 @@
         {
           "expr": "threatguard_admission_blocked_total",
           "legendFormat": "Insecure Workloads Blocked",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Blocked Insecure Workloads (Pre-Admission)",
@@ -526,10 +540,12 @@
         {
           "expr": "sum(threatguard_runtime_detections_total{severity=\"CRITICAL\"})",
           "legendFormat": "Critical Runtime Detections",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
-      "title": "Critical Demo Trace Events",
+      "title": "Critical Runtime Detections",
       "type": "stat"
     },
     {
@@ -541,7 +557,7 @@
         "y": 12
       },
       "id": 101,
-      "title": "Deterministic Runtime Trace Analysis & MITRE ATT&CK",
+      "title": "Runtime Detections & MITRE ATT&CK (origin shown in the Evidence Integrity row)",
       "type": "row"
     },
     {
@@ -599,10 +615,12 @@
         {
           "expr": "sum by (severity) (threatguard_runtime_detections_total)",
           "legendFormat": "{{severity}}",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
-      "title": "Demo Trace by Severity",
+      "title": "Runtime Detections by Severity",
       "type": "piechart"
     },
     {
@@ -683,7 +701,7 @@
           "refId": "A"
         }
       ],
-      "title": "Demo Trace by Rule ID & MITRE ATT&CK Technique",
+      "title": "Runtime Detections by Rule ID & MITRE ATT&CK Technique",
       "type": "barchart"
     },
     {
@@ -745,7 +763,9 @@
         {
           "expr": "threatguard_cloud_iam_risks_total{severity=\"critical\"}",
           "legendFormat": "Critical IAM Risks",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Critical IAM Risks",
@@ -798,7 +818,9 @@
         {
           "expr": "threatguard_open_incidents_total",
           "legendFormat": "Open Incidents",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Cross-Domain Incidents",
@@ -851,7 +873,9 @@
         {
           "expr": "threatguard_exploitable_attack_paths_total",
           "legendFormat": "Attack Paths",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Exploitable Attack Paths",
@@ -904,7 +928,9 @@
         {
           "expr": "threatguard_sensitive_resources_exposed_total",
           "legendFormat": "Sensitive Resources",
-          "refId": "A"
+          "refId": "A",
+          "instant": true,
+          "range": false
         }
       ],
       "title": "Sensitive Resources Exposed",
