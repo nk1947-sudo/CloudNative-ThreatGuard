@@ -30,8 +30,14 @@ PROJECT_ROOT: Path = _project_root()
 ARTIFACTS_DIR: Path = Path(os.environ.get("THREATGUARD_ARTIFACTS_DIR", str(PROJECT_ROOT / "artifacts")))
 
 DEFAULT_PROTECTED_NAMESPACE = os.environ.get("THREATGUARD_NAMESPACE", "threatguard")
-DEFAULT_CLUSTER_NAME = os.environ.get("THREATGUARD_CLUSTER", "threatguard-local")
-DEFAULT_NODE_NAME = os.environ.get("THREATGUARD_NODE", "threatguard-local-control-plane")
+DEFAULT_CLUSTER_NAME = os.environ.get("THREATGUARD_CLUSTER", "threatguard-cluster")
+DEFAULT_NODE_NAME = os.environ.get("THREATGUARD_NODE", "threatguard-cluster-control-plane")
+
+# Evidence origin and run identity. A run id is shared by every step of one
+# validation run so reports can reject evidence that belongs to another run.
+RUN_ID = os.environ.get("THREATGUARD_RUN_ID", "")
+EVIDENCE_MODE = os.environ.get("THREATGUARD_MODE", "live")
+COLLECTOR_VERSION = "1"
 
 EXPORTER_PORT = int(os.environ.get("EXPORTER_PORT", "9100"))
 

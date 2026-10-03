@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+from cloudnative_threatguard.config import settings
 from cloudnative_threatguard.runtime.events import SecurityEvent, SecurityIncident
 
 from .risk import RiskScoringEngine
@@ -98,7 +99,7 @@ class IncidentManager:
             "affected_namespace": correlated.namespace,
             "affected_pod": correlated.pod,
             "affected_container": correlated.container,
-            "affected_node": "threatguard-local-control-plane",
+            "affected_node": settings.DEFAULT_NODE_NAME,
             "tactics": correlated.tactics,
             "techniques": correlated.techniques,
             "event_count": len(events),

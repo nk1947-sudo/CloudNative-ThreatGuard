@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+from cloudnative_threatguard.config import settings
+
 
 class SecurityEventType(str, Enum):
     ADMISSION_VIOLATION = "admission_violation"
@@ -39,11 +41,11 @@ class SecurityEvent:
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     event_type: str = SecurityEventType.RUNTIME_DETECTION.value
     source: str = "tetragon"  # opa_gatekeeper, tetragon, threatguard_engine, simulator
-    cluster: str = "threatguard-local"
+    cluster: str = settings.DEFAULT_CLUSTER_NAME
     namespace: str = "threatguard"
     pod: str = ""
     container: str = ""
-    node: str = "threatguard-local-control-plane"
+    node: str = settings.DEFAULT_NODE_NAME
     process: str = ""
     parent_process: str = ""
     executable: str = ""
@@ -58,6 +60,15 @@ class SecurityEvent:
     destination_port: int = 0
     description: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Evidence provenance: "live" (collected from a running sensor), "demo"
+    # (deterministic fixture) or "unknown". Preserved through every layer so a
+    # simulated event can never be reported as live capture.
+    evidence_mode: str = "unknown"
+    run_id: str = ""
+    scenario_id: str = ""
+    captured_at: str = ""
+    observed_at: str = ""
+    collector_version: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Convert event to a standard JSON-serializable dictionary."""
@@ -78,11 +89,11 @@ class SecurityEvent:
         timestamp = data.get("timestamp") or datetime.now(timezone.utc).isoformat()
         event_type = data.get("event_type", SecurityEventType.RUNTIME_DETECTION.value)
         source = data.get("source", "tetragon")
-        cluster = data.get("cluster", "threatguard-local")
+        cluster = data.get("cluster", settings.DEFAULT_CLUSTER_NAME)
         namespace = data.get("namespace", "threatguard")
         pod = data.get("pod", "")
         container = data.get("container", "")
-        node = data.get("node", "threatguard-local-control-plane")
+        node = data.get("node", settings.DEFAULT_NODE_NAME)
         process = data.get("process", "")
         parent_process = data.get("parent_process", "")
         executable = data.get("executable", process)
@@ -115,7 +126,13 @@ class SecurityEvent:
             mitre_technique=mitre_technique,
             mitre_tactic=mitre_tactic,
             description=description,
-            metadata=metadata
+            metadata=metadata,
+            evidence_mode=data.get("evidence_mode", "unknown"),
+            run_id=data.get("run_id", ""),
+            scenario_id=data.get("scenario_id", ""),
+            captured_at=data.get("captured_at", ""),
+            observed_at=data.get("observed_at", ""),
+            collector_version=data.get("collector_version", ""),
         )
 
     @classmethod
@@ -221,7 +238,8 @@ class ThreatGuardDetection(SecurityEvent):
             "event_id", "timestamp", "event_type", "source", "cluster", "namespace",
             "pod", "container", "node", "process", "parent_process", "executable",
             "action", "severity", "confidence", "detection_rule", "mitre_technique",
-            "mitre_tactic", "description", "metadata"
+            "mitre_tactic", "description", "metadata", "evidence_mode", "run_id",
+            "scenario_id", "captured_at", "observed_at", "collector_version"
         }
         extras = {k: v for k, v in kwargs.items() if k not in allowed_fields}
         for k in extras:
@@ -309,7 +327,13 @@ class ThreatGuardDetection(SecurityEvent):
             mitre_technique=self.mitre_technique,
             mitre_tactic=self.mitre_tactic,
             description=self.description,
-            metadata=dict(self.metadata)
+            metadata=dict(self.metadata),
+            evidence_mode=self.evidence_mode,
+            run_id=self.run_id,
+            scenario_id=self.scenario_id,
+            captured_at=self.captured_at,
+            observed_at=self.observed_at,
+            collector_version=self.collector_version,
         )
 
 
@@ -321,7 +345,7 @@ class SecurityIncident:
     """
     incident_id: str = field(default_factory=lambda: f"#TG-{uuid.uuid4().hex[:6].upper()}")
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    cluster: str = "threatguard-local"
+    cluster: str = settings.DEFAULT_CLUSTER_NAME
     namespace: str = "threatguard"
     pod: str = ""
     container: str = ""

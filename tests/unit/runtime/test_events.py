@@ -21,7 +21,7 @@ class TestSecurityEventModel(unittest.TestCase):
         self.assertIsNotNone(event.timestamp)
         self.assertEqual(event.event_type, SecurityEventType.RUNTIME_DETECTION.value)
         self.assertEqual(event.source, "tetragon")
-        self.assertEqual(event.cluster, "threatguard-local")
+        self.assertEqual(event.cluster, "threatguard-cluster")
         self.assertEqual(event.namespace, "threatguard")
         self.assertEqual(event.pod, "sample-app-pod")
         self.assertEqual(event.process, "/bin/bash")

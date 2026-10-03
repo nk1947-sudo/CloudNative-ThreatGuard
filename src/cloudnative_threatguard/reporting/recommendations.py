@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
+from cloudnative_threatguard.config import settings
+
 from .workload_resolver import KubernetesOwnershipClient, resolve_workload_owner
 
 
@@ -57,7 +59,7 @@ class ResponseRecommendationEngine:
         pod_name: str,
         techniques: list[str],
         severity: str = "HIGH",
-        node_name: str = "threatguard-local-control-plane",
+        node_name: str = settings.DEFAULT_NODE_NAME,
         container_name: str = "app",
         owner_references: list[dict[str, Any]] | None = None,
         kubernetes_client: KubernetesOwnershipClient | None = None,
