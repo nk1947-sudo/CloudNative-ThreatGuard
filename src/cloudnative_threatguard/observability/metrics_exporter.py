@@ -9,6 +9,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from cloudnative_threatguard.config import settings
 from cloudnative_threatguard.reporting.cross_domain_metrics import compute_snapshot, load_incidents
+from cloudnative_threatguard.reporting.scorecard import EXPECTED_RUNTIME_RULES
 
 PORT = settings.EXPORTER_PORT
 
@@ -29,7 +30,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
         # 1. Admission Metrics
         adm_file = settings.ARTIFACTS_ADMISSION_DIR / "admission-results.json"
-        adm_data = {"total": 8, "blocked": 8, "allowed": 0, "enforcement_rate": 100.0}
+        adm_data = {"total": 0, "blocked": 0, "allowed": 0, "enforcement_rate": 0.0}
         if adm_file.exists():
             try:
                 adm_data = json.loads(adm_file.read_text(encoding="utf-8"))
@@ -42,7 +43,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
         lines.append("# HELP threatguard_admission_enforcement_rate Gatekeeper policy enforcement percentage")
         lines.append("# TYPE threatguard_admission_enforcement_rate gauge")
-        lines.append(f"threatguard_admission_enforcement_rate {adm_data.get('enforcement_rate', 100.0)}")
+        lines.append(f"threatguard_admission_enforcement_rate {adm_data.get('enforcement_rate', 0.0)}")
 
         # 2. Runtime Detections Metrics
         run_file = settings.ARTIFACTS_RUNTIME_DIR / "runtime-events.json"
@@ -59,6 +60,8 @@ class MetricsHandler(BaseHTTPRequestHandler):
         by_rule = {}
         for ev in events:
             r = ev.get("rule_id", "UNKNOWN")
+            if r not in EXPECTED_RUNTIME_RULES:
+                continue
             s = ev.get("severity", "UNKNOWN")
             t = ev.get("technique", "UNKNOWN")
             key = (r, s, t)
@@ -79,15 +82,15 @@ class MetricsHandler(BaseHTTPRequestHandler):
         runtime_stats = rep_data.get("runtime", {})
         lines.append("# HELP threatguard_detection_rate Behavioral detection rate for simulated attack scenarios")
         lines.append("# TYPE threatguard_detection_rate gauge")
-        lines.append(f"threatguard_detection_rate {runtime_stats.get('detection_rate', 100.0)}")
+        lines.append(f"threatguard_detection_rate {runtime_stats.get('detection_rate', 0.0)}")
 
         lines.append("# HELP threatguard_scenarios_total Total security attack scenarios executed")
         lines.append("# TYPE threatguard_scenarios_total gauge")
-        lines.append(f"threatguard_scenarios_total {runtime_stats.get('total_scenarios', 7)}")
+        lines.append(f"threatguard_scenarios_total {runtime_stats.get('total_scenarios', 0)}")
 
         lines.append("# HELP threatguard_scenarios_detected Successfully detected attack scenarios")
         lines.append("# TYPE threatguard_scenarios_detected gauge")
-        lines.append(f"threatguard_scenarios_detected {runtime_stats.get('detected', 7)}")
+        lines.append(f"threatguard_scenarios_detected {runtime_stats.get('detected', 0)}")
 
         # 4. Cross-Domain Cloud Security Overview (ThreatGuard + CloudGraphGuard)
         # Derived from persisted CrossDomainIncident objects (written by the
@@ -147,3 +150,7 @@ def run():
         pass
     finally:
         server.server_close()
+
+
+if __name__ == "__main__":
+    run()

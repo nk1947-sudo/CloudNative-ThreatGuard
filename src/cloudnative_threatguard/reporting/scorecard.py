@@ -12,6 +12,7 @@ from typing import Any
 from cloudnative_threatguard.config import settings
 
 TOTAL_SCENARIOS = 7  # RUNTIME-001..007 (cryptomining added as RUNTIME-007)
+EXPECTED_RUNTIME_RULES = {f"RUNTIME-{number:03d}" for number in range(1, TOTAL_SCENARIOS + 1)}
 
 
 def generate_scorecard() -> dict[str, Any]:
@@ -38,10 +39,10 @@ def generate_scorecard() -> dict[str, Any]:
             runtime_events = json.load(f)
             for ev in runtime_events:
                 rule = ev.get("rule_id")
-                if rule:
+                if rule in EXPECTED_RUNTIME_RULES:
                     runtime_detected_rules.add(rule)
-                sev = ev.get("severity", "UNKNOWN")
-                by_severity[sev] = by_severity.get(sev, 0) + 1
+                    sev = ev.get("severity", "UNKNOWN")
+                    by_severity[sev] = by_severity.get(sev, 0) + 1
 
     run_detected = len(runtime_detected_rules)
     run_missed = max(0, TOTAL_SCENARIOS - run_detected)
@@ -68,7 +69,7 @@ def generate_scorecard() -> dict[str, Any]:
             "detections_by_severity": by_severity,
         },
         "telemetry": {
-            "total_runtime_events": len(runtime_events),
+            "total_runtime_events": sum(ev.get("rule_id") in EXPECTED_RUNTIME_RULES for ev in runtime_events),
             "evidence_location": "artifacts/",
         },
     }
