@@ -47,8 +47,8 @@ htmlcov/
 
 # Temporary & Local State
 *.log
-# Keep the recorded validation evidence logs
-!project_evidence/logs/*.log
+# Local run evidence (screenshots, video, logs) is not published
+project_evidence/
 .tmp/
 tmp/
 
