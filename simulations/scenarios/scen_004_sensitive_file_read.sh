@@ -12,7 +12,7 @@ NAMESPACE="${2:-threatguard}"
 
 echo "[SCEN-004] Simulating unauthorized sensitive file access (/var/run/secrets/.../token and /etc/shadow) inside ${TARGET_POD}..."
 if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null || cat /etc/shadow 2>/dev/null || true"
+    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "cat /var/run/secrets/kubernetes.io/serviceaccount/token >/dev/null 2>/dev/null || cat /etc/shadow >/dev/null 2>/dev/null || true"
 else
     echo "[SCEN-004] Offline/local mode: executing simulated sensitive file read marker"
 fi

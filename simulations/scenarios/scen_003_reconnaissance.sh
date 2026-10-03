@@ -12,7 +12,7 @@ NAMESPACE="${2:-threatguard}"
 
 echo "[SCEN-003] Simulating post-exploitation reconnaissance commands (id, whoami, uname) inside ${TARGET_POD}..."
 if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "whoami; id; uname -a; env || true"
+    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "whoami; id; uname -a"
 else
     echo "[SCEN-003] Offline/local mode: executing simulated reconnaissance marker"
 fi
