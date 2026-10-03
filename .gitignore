@@ -68,4 +68,6 @@ artifacts/forensics/*
 artifacts/*.json
 # Immutable per-run evidence snapshots
 artifacts/runs/
+# Generated network policy verification results
+artifacts/network/
 !artifacts/**/.gitkeep
