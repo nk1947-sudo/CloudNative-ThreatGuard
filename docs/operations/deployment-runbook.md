@@ -1,136 +1,106 @@
 # CloudNative ThreatGuard — Operational Deployment Runbook
 
-This operational runbook provides step-by-step procedures for deploying, bootstrapping, validating, and managing CloudNative ThreatGuard in local (KIND) and staging environments.
+Step-by-step procedures for provisioning, validating and operating CloudNative ThreatGuard on a local KIND cluster. Every path and command below exists in this repository; the scripts in `scripts/` are the source of truth.
+
+Names used throughout: cluster `threatguard-cluster`, namespace `threatguard`, target pod `threatguard-target-pod`.
 
 ---
 
-## 1. Prerequisites Checklist
-
-Before provisioning the platform, verify that the local host satisfies the following software dependencies:
+## 1. Prerequisites
 
 | Tool | Minimum Version | Verification Command | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Docker Desktop / Engine** | 24.0+ | `docker --version` | Container runtime engine |
-| **KIND (Kubernetes in Docker)** | 0.20.0+ | `kind --version` | Local multi-node Kubernetes cluster |
-| **Kubectl CLI** | 1.28.0+ | `kubectl version --client` | Kubernetes API client |
-| **Python** | 3.10+ | `python --version` | ThreatGuard runtime, correlation engine, and CLI |
-| **Linux Kernel (for eBPF)** | 5.15+ (with BTF) | `uname -r` | In-kernel tracing support |
+| Docker Desktop / Engine | 24.0+ | `docker info` | Container runtime (the daemon must be running) |
+| KIND | 0.20.0+ | `kind --version` | Local Kubernetes cluster |
+| kubectl | 1.28.0+ | `kubectl version --client` | Kubernetes API client |
+| Helm | 3.x | `helm version` | Installs Tetragon |
+| Python | 3.10+ | `python --version` | ThreatGuard engine and CLI |
+| OPA | 0.60+ | `opa version` (or `opa.exe` at the repo root) | Rego unit tests |
+
+eBPF enforcement needs a Linux kernel with BTF. On Docker Desktop the sensor runs inside the Docker VM kernel; see the limitations in section 7.
+
+Install the package once:
+
+```bash
+pip install -e ".[dev]"
+```
 
 ---
 
-## 2. Step 1: Cluster Provisioning
+## 2. Provision the cluster
 
-ThreatGuard requires a KIND cluster configuration that mounts host kernel debug interfaces (`/sys/kernel/debug`) and the BPF filesystem into the cluster control plane and worker nodes.
-
-### Provision Cluster via Makefile
 ```bash
-make cluster
-```
-
-### Manual Cluster Provisioning
-If provisioning manually:
-```bash
-kind create cluster --name threatguard-local --config infra/kind/kind-cluster.yaml
-kubectl cluster-info --context kind-threatguard-local
-```
-
-### Verification
-Verify that the cluster node is in `Ready` state:
-```bash
+make cluster-up        # runs scripts/setup-cluster.sh with scripts/kind-config.yaml
 kubectl get nodes -o wide
 ```
 
----
+The node must be `Ready`.
 
-## 3. Step 2: OPA Gatekeeper Admission Controller Setup
+## 3. Install Gatekeeper, Tetragon and the policies
 
-OPA Gatekeeper enforces pre-deployment admission control via Kubernetes ValidatingWebhookConfiguration.
-
-### Install Gatekeeper
-Deploy official Gatekeeper v3.17.0:
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/v3.17.0/deploy/gatekeeper.yaml
+make install-security  # runs scripts/install-security-stack.sh
 ```
 
-Wait for Gatekeeper controller manager readiness (up to 120 seconds):
-```bash
-kubectl rollout status -n gatekeeper-system deployment/gatekeeper-controller-manager --timeout=120s
-kubectl rollout status -n gatekeeper-system deployment/gatekeeper-audit --timeout=120s
-```
+This installs Gatekeeper, applies the ConstraintTemplates and Constraints from `deploy/gatekeeper/`, installs Tetragon with `deploy/tetragon/values.yaml`, applies the TracingPolicies from `deploy/tetragon/policies/`, and finally creates the simulation target pod from `simulations/manifests/test-pod.yaml`. The script exits non-zero if a rollout fails.
 
-### Apply ThreatGuard ConstraintTemplates & Constraints
-Register the parameterized Rego templates and instantiate constraints:
-```bash
-kubectl apply -f deploy/gatekeeper/templates/
-kubectl apply -f deploy/gatekeeper/constraints/
-```
+Verify what is actually active in the cluster:
 
-### Verification
-Verify that constraints are active and enforced:
 ```bash
 kubectl get constrainttemplates
-kubectl get constraints
+kubectl get tracingpolicy
+kubectl get pod -n threatguard threatguard-target-pod
 ```
 
----
+## 4. Deploy the protected sample application
 
-## 4. Step 3: Cilium Tetragon eBPF Runtime Setup
-
-Tetragon provides real-time security observability and runtime enforcement directly within the Linux kernel.
-
-### Install Tetragon DaemonSet
-Deploy Tetragon into the `tetragon` namespace:
 ```bash
-kubectl create namespace tetragon --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f https://raw.githubusercontent.com/cilium/tetragon/v1.1.2/install/kubernetes/tetragon.yaml
+make deploy            # runs scripts/deploy-app.sh
 ```
 
-Wait for the Tetragon DaemonSet to roll out:
+The script builds the image, loads it into KIND, applies the NetworkPolicy, Service and Deployment, and fails if the rollout does not become ready.
+
+## 5. Validate
+
+There are three distinct levels. Each reports what it did and did not test.
+
 ```bash
-kubectl rollout status -n tetragon daemonset/tetragon --timeout=180s
+make verify            # local: static files, test suite, in-process checks (no cluster claim)
+make verify-live       # live: cluster, Gatekeeper, Tetragon, deployed service, Prometheus
+make security-test     # live 11-step validation; exits 2 (BLOCKED) if prerequisites are missing
+make security-test-demo  # simulated: fixtures only, labelled SIMULATED, never live acceptance
 ```
 
-### Apply ThreatGuard TracingPolicies
-Load eBPF kprobes and tracepoints into the kernel:
+Exit codes for the validation scripts: `0` everything passed, `1` something failed, `2` blocked by a missing prerequisite. A skipped or blocked check is never reported as a pass.
+
+Individual stages:
+
 ```bash
-kubectl apply -f policies/tetragon/tracing-policy.yaml
+make test-admission    # Rego unit tests and offline manifest evaluation
+make simulate          # live attack scenarios, evaluated from real sensor events
+make network-test      # NetworkPolicy enforcement canary and connectivity matrix
 ```
 
-### Verification
-Verify that the TracingPolicy is applied:
+### Reading the result
+
+`artifacts/security-report.json` contains `overall_status` (`PASS`, `FAIL`, `INCOMPLETE`, `STALE`), `origin` (`LIVE` or `SIMULATED`), the `run_id` and capture time, and per-scenario outcomes. Only a passing `LIVE` report has `live_acceptance: true`. Evidence from a different run, or older than 24 hours (`THREATGUARD_MAX_EVIDENCE_AGE_HOURS`), is reported as `INCOMPLETE` or `STALE`.
+
+## 6. Observability
+
 ```bash
-kubectl get tracingpolicies
+docker compose up -d   # exporter on 127.0.0.1:9100, Prometheus, Grafana
 ```
 
----
+- Exporter: `http://127.0.0.1:9100/metrics` (health: `/healthz`)
+- Prometheus: `http://127.0.0.1:9090/targets`
+- Grafana: `http://127.0.0.1:3000` (dashboard `threatguard-secops`)
 
-## 5. Step 4: Workload & Target Environment Setup
+The exporter labels admission and runtime series with `origin` (`live`, `demo`, `unknown`) and exposes `threatguard_artifact_valid`, `threatguard_evidence_age_seconds` and `threatguard_collector_up`. Missing or corrupt evidence appears as `artifact_valid 0`, not as a zero count.
 
-Deploy the target application pod inside the protected `threatguard` namespace:
-```bash
-kubectl create namespace threatguard --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f infra/k8s/target-pod.yaml
-kubectl wait -n threatguard --for=condition=Ready pod/threatguard-target-pod --timeout=90s
-```
+Supported operational interfaces: Grafana and the `threatguard` CLI. `observability/dashboard/unified_dashboard.html` is an illustrative static page with fixed sample data and says so in its banner.
 
-Deploy the multi-workload simulation lab:
-```bash
-./simulations/lab/setup_lab.sh
-```
+## 7. Known limitations
 
----
-
-## 6. Step 5: ThreatGuard Engine & Dashboard Initialization
-
-### Launch Security API & SOC Console
-Start the ThreatGuard web dashboard and API server:
-```bash
-python runtime/app.py
-```
-Access the SOC console at `http://127.0.0.1:8080`.
-
-### Verify Operator CLI
-Verify CLI accessibility:
-```bash
-threatguard status
-```
+- **Kprobe events on Docker Desktop.** In the KIND-on-Docker-Desktop setup tested, Tetragon exported `process_exec` events only. Shell-block, file-open and connect events did not appear in the export stream (the agent logs `procfs does not appear to be host procfs`). Scenarios that depend on them (SCEN-001, 004, 006, 008) then fail with an explicit diagnosis instead of being counted as detected. Run on a Linux host with host procfs access to exercise them.
+- **NetworkPolicy enforcement.** The default KIND CNI (`kindnetd v20240202`) did not enforce a deny-all canary policy. `make network-test` reports BLOCKED, and the isolation claims in `docs/security/network-security.md` are unverified until a policy-enforcing CNI (for example Calico or Cilium) is installed.
+- **Simulated inputs.** The cloud IAM correlation uses fixed local inputs; no cloud account is queried.

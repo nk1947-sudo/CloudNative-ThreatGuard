@@ -26,6 +26,8 @@ python -m unittest simulations/test_simulations.py -v
 
 ## 3. Individual Scenario Execution & Observation Guide
 
+> **Execution model.** `run_simulations.sh --mode live` runs every scenario, then decides each outcome from the Tetragon events inside that scenario's time window. A killed process (exit 137) is a recorded outcome, not a reason to stop. Scenario scripts execute binaries directly, never through `/bin/sh -c`, because the shell policy would kill them. `--mode demo` replays labelled fixtures and executes nothing.
+
 ### SCEN-000: Admission Policy Enforcement (Pre-Deployment Block)
 * **Description**: Verifies that OPA Gatekeeper blocks pods violating Kubernetes hardening standards.
 * **Execution**:
@@ -43,7 +45,7 @@ python -m unittest simulations/test_simulations.py -v
 * **Description**: Simulates remote code execution (RCE) resulting in a spawned `/bin/sh` process.
 * **Execution**:
   ```bash
-  ./simulations/scenarios/scen_001_shell_exec.sh
+  ./simulations/scenarios/scen_001_shell_execution.sh
   ```
 * **Observation**:
   - Tetragon traces `sys_enter_execve` for `/bin/sh`.
@@ -122,7 +124,7 @@ python -m unittest simulations/test_simulations.py -v
 * **Description**: Simulates cryptomining malware (`xmrig` process emulation).
 * **Execution**:
   ```bash
-  ./simulations/scenarios/scen_007_cryptominer.sh
+  ./simulations/scenarios/scen_007_cryptominer_process.sh
   ```
 * **Observation**:
   - Rule Triggered: `RULE-K8S-007` (Cryptocurrency Mining Activity).
@@ -134,7 +136,7 @@ python -m unittest simulations/test_simulations.py -v
 * **Description**: Scans internal Kubernetes services (CoreDNS / Kubernetes API).
 * **Execution**:
   ```bash
-  ./simulations/scenarios/scen_008_lateral_recon.sh
+  ./simulations/scenarios/scen_008_network_discovery_lateral.sh
   ```
 * **Observation**:
   - Rule Triggered: `RULE-K8S-008` (Internal Network Port Scanning & Lateral Discovery).

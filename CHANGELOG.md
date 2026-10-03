@@ -4,6 +4,34 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased] -- Truthful validation and evidence pipeline (2026-10-03)
+
+### Fixed
+- Admission runner counted any failed `kubectl apply` as a Gatekeeper block. Results are now classified `policy_denied`, `unexpectedly_allowed` or `execution_error`; only a response carrying the Gatekeeper webhook identity counts as a denial. A rejected compliant manifest, a missing manifest, an unreachable API or missing OPA can no longer produce a pass.
+- The validation harness printed "27 Rego tests passed" and "6/6 detected" unconditionally. Every step now records PASS, FAIL, BLOCKED or SKIPPED, totals are derived from real inputs, and the exit code is 0 / 1 / 2.
+- The orchestrator appended fixed events dated 2026-09-05 after every scenario, even against a live pod. Live mode reads the real Tetragon stream and never falls back to fixtures.
+- A policy-enforced kill (exit 137) no longer ends the whole run; outcomes are decided per scenario from sensor evidence.
+- Scenarios exec binaries directly instead of through `/bin/sh -c`, which the shell policy kills.
+- `deploy-app.sh` no longer reports success when the rollout does not become ready; `install-security-stack.sh` fails on a Tetragon or target-pod rollout failure.
+- The simulated risk input assumed `runAsUser: 0` for a UID 10001 target. Live runs read the effective pod security context; unknown settings are not scored; demo runs use a coherent simulated spec.
+- Target pod now sets `runAsGroup: 10001`, disables ServiceAccount token mounting and starts `/bin/sleep` directly instead of a shell wrapper.
+- Cluster and node defaults match the real KIND cluster (`threatguard-cluster`).
+- The deployment runbook referenced paths that do not exist; rewritten against the real scripts.
+
+### Added
+- `runtime/collector.py`: bounded live Tetragon capture with source-identity deduplication, secret redaction, pod filtering and explicit degraded/unavailable states.
+- `runtime/pipeline.py` and `simulations/scenario_catalog.json`: explicit `live` and `demo` modes, per-scenario outcomes (including a benign control), and a run manifest.
+- Evidence provenance on every event (`evidence_mode`, `run_id`, `scenario_id`, `captured_at`, `observed_at`, `collector_version`). Demo events can never be reported as live.
+- Scorecard reports origin, run id and capture time; separates scenario outcomes from rule coverage; rejects mixed-run evidence and flags stale evidence. Only a passing LIVE run has `live_acceptance: true`.
+- Exporter: `origin` label, gauge semantics for snapshot counts, `threatguard_artifact_valid`, evidence age, collector health, and `/healthz`. Missing or corrupt evidence is visible instead of a zero.
+- `threatguard verify` has `local` and `--live` scopes with PASS/FAIL/SKIP/BLOCKED states.
+- `make network-test`: NetworkPolicy enforcement canary and connectivity matrix.
+- Execve kprobe events are evaluated by the shell rule (RUNTIME-001).
+
+### Known limitations
+- On KIND with Docker Desktop, Tetragon exported only `process_exec` events in testing; kprobe-based scenarios (shell block, file open, connect) are reported failed with a diagnosis, not detected.
+- The default KIND CNI did not enforce NetworkPolicy; isolation is unverified (see `docs/security/network-security.md`).
+
 ## [Unreleased] -- Repository restructure (2026-09-05/07)
 
 A full repository restructure into an installable Python package with a single canonical CLI,

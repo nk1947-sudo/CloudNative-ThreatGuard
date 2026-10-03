@@ -8,7 +8,7 @@ SHELL := /bin/bash
 
 .PHONY: help install test test-admission lint format typecheck validate \
         build cluster-up cluster-down install-security deploy simulate \
-        evidence security-test security-test-demo dashboard demo-cloud verify verify-live clean
+        evidence security-test security-test-demo network-test dashboard demo-cloud verify verify-live clean
 
 help: ## Display this help message
 	@echo "======================================================================"
@@ -79,6 +79,9 @@ demo-cloud: ## Run deterministic cross-domain cloud security demo
 
 verify: ## Local platform verification (static and in-process checks)
 	@threatguard verify
+
+network-test: ## Verify NetworkPolicy enforcement (BLOCKED if the CNI does not enforce policies)
+	@bash scripts/test-network-policy.sh
 
 verify-live: ## Verify the running cluster, deployed service and Prometheus
 	@threatguard verify --live

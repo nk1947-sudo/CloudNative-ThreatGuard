@@ -207,31 +207,43 @@ Controlled, local, non-destructive post-exploitation scenarios simulate attacker
 - **`SCEN-004`**: Attempts unauthorized reads of the Kubernetes ServiceAccount token and `/etc/shadow`.
 - **`SCEN-005`**: Tests capability and namespace inspection (`capsh --print` / `nsenter`).
 - **`SCEN-006`**: Initiates outbound socket connections to simulate external command-and-control beacons.
+- **`SCEN-007`**: Executes an inert test executable named `xmrig` to exercise the miner process-name rule. No mining software is involved.
+- **`SCEN-008`**: Probes an in-cluster service name to exercise the connect rule.
+- **`SCEN-B01`**: A benign control that must *not* alert, so false alerts are measured.
+
+Scenarios execute test binaries directly (`kubectl exec -- <binary>`), because the shell-blocking policy kills any shell. The scenario list, expected rules and enforcement expectations live in `simulations/scenario_catalog.json`.
 
 ---
 
 ## Security Validation & Real Test Results
 
-The platform includes an automated 11-step verification harness (`scripts/run-security-validation.sh` or `make security-test`).
+The platform includes an automated 11-step verification harness (`scripts/run-security-validation.sh`, `make security-test` for live evidence, `make security-test-demo` for the labelled simulation).
 
-### Verified Test Results (Executed in Environment)
+Two modes are kept strictly apart:
+
+| Mode | Evidence | Origin label | Can reach live acceptance |
+|---|---|---|---|
+| `live` | Real Gatekeeper webhook responses and the real Tetragon event stream | `LIVE` | Yes, only if every required step passes |
+| `demo` | Offline OPA evaluation and a deterministic fixture trace | `SIMULATED` | Never |
+
+Every step ends in PASS, FAIL, BLOCKED or SKIPPED. A missing tool, unreachable API, wrong path or skipped check cannot become a pass, and live mode never falls back to fixtures. The scorecard scores each planned scenario separately from rule coverage, rejects evidence from a different run, and marks old evidence `STALE`.
+
+### Example scorecard (demo mode, simulated evidence)
 
 ```
 ===========================================================================
                     SECURITY SCORECARD SUMMARY
 ===========================================================================
-Project:              CloudNative ThreatGuard
-Status:               PASS
+Evidence origin:      SIMULATED  (run 508f7f19d174)
+Overall Status:       PASS  (live acceptance: False)
 ---------------------------------------------------------------------------
-Rego Unit Tests:      27/27 passed (100.0%)
-Admission Control:    8/8 malicious workloads blocked (100.0%)
-Compliant Workload:   Admitted & Running (100.0%)
-Runtime Detections:   6/6 simulated attack scenarios detected (100.0%)
-Severity Breakdown:   CRITICAL: 3 | HIGH: 2 | MEDIUM: 1
+Admission Control:    8/8 denied by policy, 0 unexpectedly allowed, 0 errors [PASS]
+Scenarios:            9 passed / 9 planned (failed 0, blocked 0, skipped 0, not run 0)
+Rule Coverage:        7/7 rules observed
 ===========================================================================
 ```
 
-*Results are dynamically generated from actual test runs and saved to `artifacts/security-report.json`.*
+This output comes from fixtures. It demonstrates the pipeline and scoring, not live attack detection. The latest live run on the maintainer's KIND-on-Docker-Desktop setup confirmed the 8 live Gatekeeper denials and the process-exec based detections, but the kprobe-based scenarios could not be confirmed there (see `docs/operations/deployment-runbook.md`, section 7). Results are written to `artifacts/security-report.json`.
 
 ---
 
@@ -358,15 +370,24 @@ make test-admission    # 27 Rego policy unit tests + 8 negative admission manife
 
 ### 2. Execute Attack Simulations & Generate Telemetry
 ```bash
-make simulate
+make simulate                                   # live: requires the cluster and target pod
+bash simulations/run_simulations.sh --mode demo # simulated fixtures, labelled demo
 ```
-Executes the attack scenarios and outputs correlated detections to `artifacts/runtime/runtime-events.json`.
+Live mode runs each scenario, reads the matching Tetragon events and writes `artifacts/runtime/runtime-events.json` plus a `run-manifest.json` describing every scenario's outcome. It exits 2 (BLOCKED) when the cluster or sensor is unavailable.
 
 ### 3. Run the Complete 11-Step Security Test Harness
 ```bash
-make security-test
+make security-test       # live; exit 0 pass, 1 fail, 2 blocked
+make security-test-demo  # simulated; never live acceptance
 ```
-Executes cluster health check, Gatekeeper validation, malicious admission denial, workload deployment, attack simulations, telemetry correlation, metrics generation, and scorecard production.
+Executes cluster health check, Gatekeeper validation, Rego tests, admission enforcement, workload deployment, attack simulations, telemetry validation, metrics generation, and scorecard production.
+
+### 3b. Verify the Platform and Network Isolation
+```bash
+make verify          # local static and in-process checks
+make verify-live     # running cluster, deployed service, Prometheus
+make network-test    # NetworkPolicy enforcement canary and connectivity matrix
+```
 
 ### 4. Start Prometheus Metrics Exporter
 ```bash

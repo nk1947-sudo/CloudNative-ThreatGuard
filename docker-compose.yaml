@@ -1,14 +1,23 @@
 services:
   exporter:
-    image: python:3.12-slim
+    # Built from observability/exporter/Dockerfile so dependencies are baked in
+    # and starting the container needs no package download.
+    build:
+      context: .
+      dockerfile: observability/exporter/Dockerfile
+    image: threatguard-exporter:local
     container_name: threatguard-exporter
-    working_dir: /workspace
-    command: sh -c "pip install --no-cache-dir --target /tmp/threatguard-deps 'pydantic>=2.0,<3.0' 'PyYAML>=6.0' -q && PYTHONPATH=/tmp/threatguard-deps:/workspace/src python -m cloudnative_threatguard.observability.metrics_exporter"
     user: "10001:10001"
     ports:
       - "127.0.0.1:9100:9100"
     volumes:
-      - .:/workspace:ro
+      - ./artifacts:/workspace/artifacts:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9100/healthz', timeout=2).status == 200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
 
   prometheus:
@@ -20,7 +29,8 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/alerts.yaml:/etc/prometheus/alerts.yaml:ro
     depends_on:
-      - exporter
+      exporter:
+        condition: service_healthy
     restart: unless-stopped
 
   grafana:

@@ -62,7 +62,10 @@ helm upgrade --install tetragon cilium/tetragon \
     -f "${REPO_ROOT}/deploy/tetragon/values.yaml"
 
 log_info "Waiting for Tetragon DaemonSet to become ready..."
-kubectl rollout status ds/tetragon -n tetragon --timeout=120s || log_warn "Tetragon rollout taking time; continuing..."
+if ! kubectl rollout status ds/tetragon -n tetragon --timeout=180s; then
+    log_error "Tetragon DaemonSet did not become ready; refusing to continue."
+    exit 1
+fi
 
 log_step "6. Applying Tetragon TracingPolicies..."
 kubectl apply -f "${REPO_ROOT}/deploy/tetragon/policies/"
@@ -71,6 +74,9 @@ log_success "eBPF TracingPolicies loaded."
 log_step "7. Deploying Attack Simulation Target Pod..."
 kubectl apply -f "${REPO_ROOT}/simulations/manifests/test-pod.yaml"
 log_info "Waiting for simulation target pod to be Running..."
-kubectl wait --for=condition=Ready pod/threatguard-target-pod -n threatguard --timeout=60s || true
+if ! kubectl wait --for=condition=Ready pod/threatguard-target-pod -n threatguard --timeout=90s; then
+    log_error "Simulation target pod did not become Ready."
+    exit 1
+fi
 
 log_success "Security stack installation complete."

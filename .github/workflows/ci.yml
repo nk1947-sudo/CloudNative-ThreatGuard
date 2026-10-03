@@ -32,6 +32,12 @@ jobs:
       - name: "Compile Check"
         run: python -m compileall -q src tests
 
+      - name: "Shell Syntax Check"
+        run: |
+          for f in scripts/*.sh simulations/*.sh simulations/scenarios/*.sh; do
+            bash -n "$f" || exit 1
+          done
+
       - name: "Run Unit Tests"
         run: pytest tests/unit -q
 
@@ -63,6 +69,18 @@ jobs:
 
       - name: "Validate Admission Test Manifests via OPA"
         run: threatguard admission validate
+
+      - name: "Demo Pipeline (simulated evidence, not live acceptance)"
+        run: |
+          bash scripts/run-security-validation.sh --mode demo
+          python - <<'EOF'
+          import json
+          report = json.load(open("artifacts/security-report.json"))
+          assert report["origin"] == "SIMULATED", report["origin"]
+          assert report["live_acceptance"] is False
+          assert report["overall_status"] == "PASS", report["overall_status"]
+          print("demo pipeline OK:", report["runtime"]["scenario_counts"])
+          EOF
 
       - name: "Setup Kubeconform"
         run: |
