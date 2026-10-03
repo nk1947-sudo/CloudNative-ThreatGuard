@@ -51,7 +51,7 @@ bypassed, a genuine command-injection path, a credential handling flaw -- as dis
 intentionally-simulated attacker behavior described above), please report it privately rather than
 opening a public issue:
 
-- Open a [GitHub Security Advisory](https://github.com/cloudnative-threatguard/cloudnative-threatguard/security/advisories/new)
+- Open a [GitHub Security Advisory](https://github.com/nk1947-sudo/CloudNative-ThreatGuard/security/advisories/new)
   on this repository, or
 - If that isn't available to you, open an issue asking a maintainer to contact you privately, without
   including exploit details in the issue itself.

@@ -12,7 +12,7 @@ optionally `kind`, `helm`, and `opa` for the full cluster lab (see [docs/develop
 for Windows/WSL2/macOS specifics).
 
 ```bash
-git clone https://github.com/cloudnative-threatguard/cloudnative-threatguard.git
+git clone https://github.com/nk1947-sudo/CloudNative-ThreatGuard.git
 cd cloudnative-threatguard
 python -m venv .venv
 source .venv/bin/activate      # or .venv\Scripts\activate on Windows

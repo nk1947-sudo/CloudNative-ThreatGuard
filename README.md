@@ -2,8 +2,8 @@
 
 > A Kubernetes defense-in-depth security engineering platform combining **OPA Gatekeeper** for deterministic pre-deployment admission control with **Cilium Tetragon eBPF** for behavioral runtime threat detection, automated attack simulations, and verified security telemetry.
 
-[![CI](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/ci.yml)
-[![Security Scan](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/security.yml/badge.svg)](https://github.com/cloudnative-threatguard/cloudnative-threatguard/actions/workflows/security.yml)
+[![CI](https://github.com/nk1947-sudo/CloudNative-ThreatGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/nk1947-sudo/CloudNative-ThreatGuard/actions/workflows/ci.yml)
+[![Security Scan](https://github.com/nk1947-sudo/CloudNative-ThreatGuard/actions/workflows/security.yml/badge.svg)](https://github.com/nk1947-sudo/CloudNative-ThreatGuard/actions/workflows/security.yml)
 [![Kubernetes Version](https://img.shields.io/badge/kubernetes-v1.30+-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io)
 [![OPA Gatekeeper](https://img.shields.io/badge/OPA%20Gatekeeper-v3.17-orange)](https://open-policy-agent.github.io/gatekeeper/)
 [![Cilium Tetragon](https://img.shields.io/badge/eBPF-Tetragon%20v1.1-blue)](https://tetragon.io)
@@ -327,7 +327,7 @@ cloudnative-threatguard/
 ## Installation
 
 ```bash
-git clone https://github.com/cloudnative-threatguard/cloudnative-threatguard.git
+git clone https://github.com/nk1947-sudo/CloudNative-ThreatGuard.git
 cd cloudnative-threatguard
 pip install -e ".[dev]"
 ```

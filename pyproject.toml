@@ -34,8 +34,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cloudnative-threatguard/cloudnative-threatguard"
-Issues = "https://github.com/cloudnative-threatguard/cloudnative-threatguard/issues"
+Homepage = "https://github.com/nk1947-sudo/CloudNative-ThreatGuard"
+Issues = "https://github.com/nk1947-sudo/CloudNative-ThreatGuard/issues"
 
 [project.scripts]
 threatguard = "cloudnative_threatguard.cli.main:main"
