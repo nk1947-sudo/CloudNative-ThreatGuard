@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "SCEN-001",
+      "name": "Interactive shell execution",
+      "script": "scen_001_shell_execution.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-001"],
+      "expected_enforcement": "block",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-002",
+      "name": "Network utility execution",
+      "script": "scen_002_network_utility.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-002"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-003",
+      "name": "Reconnaissance binaries",
+      "script": "scen_003_reconnaissance.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-003"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-004",
+      "name": "Sensitive file access",
+      "script": "scen_004_sensitive_file_read.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-004"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-005",
+      "name": "Privilege escalation tooling",
+      "script": "scen_005_priv_escalation.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-005"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-006",
+      "name": "Outbound network connection",
+      "script": "scen_006_outbound_network.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-006"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-007",
+      "name": "Cryptominer process name (inert test executable)",
+      "script": "scen_007_cryptominer_process.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-007"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-008",
+      "name": "Internal service discovery connection",
+      "script": "scen_008_network_discovery_lateral.sh",
+      "required": true,
+      "expected_rules": ["RUNTIME-006"],
+      "expected_enforcement": "detect",
+      "timeout_seconds": 30
+    },
+    {
+      "id": "SCEN-B01",
+      "name": "Benign control (no alert expected)",
+      "script": "scen_b01_benign_control.sh",
+      "required": true,
+      "expected_rules": [],
+      "expected_enforcement": "none",
+      "timeout_seconds": 30
+    }
+  ]
+}

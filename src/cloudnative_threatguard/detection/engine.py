@@ -234,6 +234,23 @@ class DetectionEngine:
         if self.protected_namespace and namespace != self.protected_namespace:
             return None
 
+        # Policies that hook the execve syscall (for example the shell-blocking
+        # policy) report the target binary as a path argument. Evaluate it with
+        # the same rules as a process_exec event. The argument layout follows
+        # Tetragon's documented file_arg/string_arg encoding.
+        if "execve" in func_name:
+            exec_path = ""
+            for arg in args_list:
+                if isinstance(arg, dict) and "file_arg" in arg:
+                    exec_path = (arg.get("file_arg") or {}).get("path", "") or exec_path
+                elif isinstance(arg, dict) and "string_arg" in arg:
+                    exec_path = arg.get("string_arg", "") or exec_path
+            if not exec_path:
+                return None
+            return self._handle_process_exec(
+                {"process": {**proc, "binary": exec_path, "arguments": ""}}, event_time
+            )
+
         # RUNTIME-004: Sensitive file access via security_file_open or openat
         if "file" in func_name or "open" in func_name:
             file_path = ""
