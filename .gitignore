@@ -1,6 +1,7 @@
 # Binaries and executables
 bin/
 *.exe
+opa.exe
 *.dll
 *.so
 *.dylib
@@ -46,6 +47,8 @@ htmlcov/
 
 # Temporary & Local State
 *.log
+# Keep the recorded validation evidence logs
+!project_evidence/logs/*.log
 .tmp/
 tmp/
 
