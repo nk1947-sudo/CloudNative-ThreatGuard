@@ -1,18 +1,57 @@
 {
   "project": "CloudNative ThreatGuard",
-  "timestamp": "2026-09-30T14:48:40.949802+00:00",
+  "timestamp": "2026-10-03T17:52:38.539841+00:00",
   "overall_status": "PASS",
+  "origin": "SIMULATED",
+  "live_acceptance": false,
+  "run_id": "4ee498db9795",
+  "evidence_captured_at": "2026-10-03T17:52:36.070386+00:00",
+  "issues": [],
   "admission": {
     "total": 8,
     "blocked": 8,
     "allowed": 0,
-    "enforcement_rate": 100.0
+    "errors": 0,
+    "enforcement_rate": 100.0,
+    "positive_allowed": 1,
+    "positive_total": 1,
+    "mode": "opa_offline_evaluation",
+    "status": "PASS"
   },
   "runtime": {
-    "total_scenarios": 7,
-    "detected": 7,
+    "total_scenarios": 9,
+    "detected": 9,
     "missed": 0,
     "detection_rate": 100.0,
+    "scenario_counts": {
+      "planned": 9,
+      "passed": 9,
+      "failed": 0,
+      "blocked": 0,
+      "skipped": 0,
+      "not_run": 0
+    },
+    "rule_coverage": {
+      "expected_rules": [
+        "RUNTIME-001",
+        "RUNTIME-002",
+        "RUNTIME-003",
+        "RUNTIME-004",
+        "RUNTIME-005",
+        "RUNTIME-006",
+        "RUNTIME-007"
+      ],
+      "covered_rules": [
+        "RUNTIME-001",
+        "RUNTIME-002",
+        "RUNTIME-003",
+        "RUNTIME-004",
+        "RUNTIME-005",
+        "RUNTIME-006",
+        "RUNTIME-007"
+      ],
+      "coverage_rate": 100.0
+    },
     "detected_rules": [
       "RUNTIME-001",
       "RUNTIME-002",
@@ -26,10 +65,156 @@
       "CRITICAL": 4,
       "HIGH": 3,
       "MEDIUM": 1
-    }
+    },
+    "scenarios": [
+      {
+        "scenario_id": "SCEN-001",
+        "name": "Interactive shell execution",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-001"
+        ],
+        "detected_rules": [
+          "RUNTIME-001"
+        ],
+        "expected_enforcement": "block",
+        "enforcement_observed": true,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-002",
+        "name": "Network utility execution",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-002"
+        ],
+        "detected_rules": [
+          "RUNTIME-002"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-003",
+        "name": "Reconnaissance binaries",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-003"
+        ],
+        "detected_rules": [
+          "RUNTIME-003"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-004",
+        "name": "Sensitive file access",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-004"
+        ],
+        "detected_rules": [
+          "RUNTIME-004"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-005",
+        "name": "Privilege escalation tooling",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-005"
+        ],
+        "detected_rules": [
+          "RUNTIME-005"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-006",
+        "name": "Outbound network connection",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-006"
+        ],
+        "detected_rules": [
+          "RUNTIME-006"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-007",
+        "name": "Cryptominer process name (inert test executable)",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-007"
+        ],
+        "detected_rules": [
+          "RUNTIME-007"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-008",
+        "name": "Internal service discovery connection",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [
+          "RUNTIME-006"
+        ],
+        "detected_rules": [
+          "RUNTIME-006"
+        ],
+        "expected_enforcement": "detect",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      },
+      {
+        "scenario_id": "SCEN-B01",
+        "name": "Benign control (no alert expected)",
+        "required": true,
+        "status": "passed",
+        "expected_rules": [],
+        "detected_rules": [],
+        "expected_enforcement": "none",
+        "enforcement_observed": false,
+        "exit_code": null,
+        "reasons": []
+      }
+    ]
   },
   "telemetry": {
     "total_runtime_events": 8,
+    "collector": {
+      "status": "not_applicable",
+      "collector_version": "demo-fixture"
+    },
     "evidence_location": "artifacts/"
   }
 }
