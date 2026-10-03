@@ -43,8 +43,9 @@ log_info "Applying Hardened Deployment..."
 kubectl apply -f "${REPO_ROOT}/app/secure-web-app/k8s/deployment.yaml"
 
 log_info "Verifying Gatekeeper admission and rollout..."
-if kubectl rollout status deployment/threatguard-app -n threatguard --timeout=90s; then
+if kubectl rollout status deployment/threatguard-app -n threatguard --timeout=120s; then
     log_success "Hardened application admitted and running successfully."
 else
-    log_warn "Application pods are initializing..."
+    log_error "Deployment did not become ready within the timeout."
+    exit 1
 fi

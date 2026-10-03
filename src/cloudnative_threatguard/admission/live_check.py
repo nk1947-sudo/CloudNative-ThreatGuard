@@ -105,7 +105,7 @@ def summarize(negative: list[dict[str, Any]], positive: list[dict[str, Any]], mo
         "evidence_mode": "live" if mode == "live_cluster_webhook" else "offline",
         "status": "PASS" if passed else "FAIL",
         "captured_at": datetime.now(timezone.utc).isoformat(),
-        "run_id": uuid.uuid4().hex[:12],
+        "run_id": settings.RUN_ID or uuid.uuid4().hex[:12],
         "negative_results": negative,
         "positive_results": positive,
     }

@@ -221,6 +221,17 @@ class TestLiveMode(unittest.TestCase):
             recon = [e for e in runtime if e["rule_id"] == "RUNTIME-003"]
             self.assertEqual(len(recon), 1)
 
+    def test_missing_kprobe_stream_is_diagnosed_not_just_reported_as_a_miss(self):
+        with isolated_artifacts() as root:
+            events = {k: [e for e in v if "process_exec" in e] for k, v in full_live_events().items()}
+            manifest, code = self.run_live(root, events=events)
+            by_id = {s["scenario_id"]: s for s in manifest["scenarios"]}
+            self.assertEqual(code, pipeline.EXIT_FAILED)
+            self.assertEqual(by_id["SCEN-004"]["status"], "failed")
+            self.assertTrue(any("no process_kprobe events" in r for r in by_id["SCEN-004"]["reasons"]))
+            self.assertEqual(by_id["SCEN-003"]["status"], "passed")
+            self.assertEqual(manifest["collector"]["event_kinds"], {"process_exec": 6})
+
     def test_events_from_other_pods_are_ignored(self):
         with isolated_artifacts() as root:
             events = full_live_events()

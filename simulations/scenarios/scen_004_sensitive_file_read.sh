@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# SCEN-004: Sensitive Credential & ServiceAccount Token Access
-# Expected Detection: RUNTIME-004
-# MITRE ATT&CK: T1552.007 (Unsecured Credentials: Container and Resource Discovery)
-# Severity: CRITICAL
+# SCEN-004: Sensitive File Access
+# Expected Detection: RUNTIME-004 (T1552.007, Container API credential access)
+# Opens /etc/shadow, which a non-root user cannot read. The open attempt is what
+# the sensor observes; no credential content is read or printed, and the target
+# pod does not need a mounted ServiceAccount token for this test.
 
-set -euo pipefail
-export MSYS_NO_PATHCONV=1
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/_common.sh"
 
-TARGET_POD="${1:-threatguard-target-pod}"
-NAMESPACE="${2:-threatguard}"
-
-echo "[SCEN-004] Simulating unauthorized sensitive file access (/var/run/secrets/.../token and /etc/shadow) inside ${TARGET_POD}..."
-if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "cat /var/run/secrets/kubernetes.io/serviceaccount/token >/dev/null 2>/dev/null || cat /etc/shadow >/dev/null 2>/dev/null || true"
-else
-    echo "[SCEN-004] Offline/local mode: executing simulated sensitive file read marker"
-fi
+echo "[SCEN-004] Attempting to open /etc/shadow inside ${TARGET_POD}..."
+require_target
+step /bin/cat /etc/shadow
+finish

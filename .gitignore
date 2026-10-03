@@ -66,4 +66,6 @@ artifacts/forensics/*
 # Generated state/report files that land directly in artifacts/ itself,
 # not in one of the subdirectories above (e.g. the CLI's incident cache).
 artifacts/*.json
+# Immutable per-run evidence snapshots
+artifacts/runs/
 !artifacts/**/.gitkeep

@@ -1,161 +1,108 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # CloudNative ThreatGuard — Attack Simulation Orchestrator
-# Executes safe, controlled, non-destructive post-exploitation scenarios.
-# Orchestrates Admission Denial, Runtime eBPF Detections, Incident Correlation,
-# and Transparent Risk Scoring.
+#
+# Usage: run_simulations.sh [--mode live|demo] [TARGET_POD] [NAMESPACE]
+#
+#   live (default)  Runs each scenario in the target pod, then reads the real
+#                   Tetragon event stream for each scenario's time window.
+#                   Requires a reachable cluster; it never falls back to
+#                   fixtures. Missing prerequisites exit 2 (BLOCKED).
+#   demo            Replays the deterministic fixture trace without running
+#                   anything. Evidence is labelled demo/SIMULATED.
+#
+# The orchestrator does not stop at the first failing scenario: an enforced
+# kill (exit 137) is an expected, recorded outcome. After every scenario has
+# been attempted, outcomes are decided from sensor evidence (see
+# src/cloudnative_threatguard/runtime/pipeline.py) and the exit code is
+#   0  all required scenarios passed
+#   1  at least one required scenario failed or was not run
+#   2  blocked (no cluster, no target pod or no sensor event stream)
 # ==============================================================================
 
-set -euo pipefail
-export MSYS_NO_PATHCONV=1
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCENARIOS_DIR="${SCRIPT_DIR}/scenarios"
-ARTIFACTS_RUNTIME="artifacts/runtime"
+ARTIFACTS_RUNTIME="artifacts/runtime"  # repo-relative: Windows Python cannot read Git Bash /c/... paths
+RESULTS_FILE="${ARTIFACTS_RUNTIME}/scenario-results.tsv"
+
+MODE="${THREATGUARD_MODE:-live}"
+if [ "${1:-}" = "--mode" ]; then
+    MODE="${2:-live}"
+    shift 2
+fi
 TARGET_POD="${1:-threatguard-target-pod}"
 NAMESPACE="${2:-threatguard}"
+PAUSE_SECONDS="${SCENARIO_PAUSE_SECONDS:-4}"
 
+case "${MODE}" in
+    live | demo) ;;
+    *)
+        echo "Unknown mode '${MODE}' (use live or demo)" >&2
+        exit 2
+        ;;
+esac
+
+cd "${REPO_ROOT}"
 mkdir -p "${ARTIFACTS_RUNTIME}"
+export THREATGUARD_MODE="${MODE}"
+export THREATGUARD_RUN_ID="${THREATGUARD_RUN_ID:-$(python -c 'import uuid; print(uuid.uuid4().hex[:12])')}"
+
+now() { date -u +%Y-%m-%dT%H:%M:%S.%3NZ; }
 
 echo "======================================================================"
 echo " CloudNative ThreatGuard — Behavioral Attack Simulation Suite"
-echo " Target Pod: ${TARGET_POD} | Namespace: ${NAMESPACE}"
+echo " Mode: ${MODE} | Run: ${THREATGUARD_RUN_ID} | Target: ${NAMESPACE}/${TARGET_POD}"
 echo "======================================================================"
 
-if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    echo "[+] Live Kubernetes target pod detected: ${TARGET_POD}"
-else
-    echo "[!] Target pod not active or kubectl unavailable. Running in local trace simulation mode."
+if [ "${MODE}" = "demo" ]; then
+    echo "[demo] Replaying the deterministic fixture trace. No scenario is executed."
+    python -m cloudnative_threatguard.runtime.pipeline --mode demo \
+        --run-id "${THREATGUARD_RUN_ID}" --namespace "${NAMESPACE}" --pod "${TARGET_POD}"
+    exit $?
 fi
 
-# Raw events capture file
-RAW_TELEMETRY="${ARTIFACTS_RUNTIME}/tetragon-raw.json"
-: > "${RAW_TELEMETRY}"
+if ! command -v kubectl >/dev/null 2>&1 || ! kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo "[BLOCKED] kubectl or the target pod ${NAMESPACE}/${TARGET_POD} is unavailable." >&2
+    echo "          Start the cluster, or run with --mode demo for the labelled simulation." >&2
+    exit 2
+fi
+echo "[+] Live target pod detected: ${TARGET_POD}"
 
-echo ""
-echo "[SCENARIO 0/8] Admission Control: Insecure Workload Rejection..."
-bash "${SCENARIOS_DIR}/scen_000_admission_denial.sh" "${NAMESPACE}"
+SINCE="$(now)"
+: > "${RESULTS_FILE}"
 
-echo ""
-echo "[SCENARIO 1/8] Execution: Interactive Shell Spawned (T1059.004)..."
-bash "${SCENARIOS_DIR}/scen_001_shell_execution.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:01Z","process_exec":{"process":{"binary":"/bin/sh","arguments":"-c whoami","pid":5101,"uid":10001,"pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}}}}
-EOF
-
-echo ""
-echo "[SCENARIO 2/8] Command & Control: Ingress Tool Transfer (T1105)..."
-bash "${SCENARIOS_DIR}/scen_002_network_utility.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:02Z","process_exec":{"process":{"binary":"/usr/bin/wget","arguments":"-qO- http://127.0.0.1:8080/healthz","pid":5102,"uid":10001,"pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}}}}
-EOF
-
-echo ""
-echo "[SCENARIO 3/8] Discovery: Host and Environment Profiling (T1082)..."
-bash "${SCENARIOS_DIR}/scen_003_reconnaissance.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:03Z","process_exec":{"process":{"binary":"/usr/bin/whoami","arguments":"","pid":5103,"uid":10001,"pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}}}}
-EOF
-
-echo ""
-echo "[SCENARIO 4/8] Credential Access: Kubernetes SA Token Harvesting (T1552.007)..."
-bash "${SCENARIOS_DIR}/scen_004_sensitive_file_read.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:04Z","process_kprobe":{"function_name":"security_file_open","process":{"binary":"/bin/cat","pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}},"args":[{"file_arg":{"path":"/var/run/secrets/kubernetes.io/serviceaccount/token"}},{"int_arg":0}]}}
-EOF
-
-echo ""
-echo "[SCENARIO 5/8] Privilege Escalation: Namespace Breakout / Cap Inspection (T1611)..."
-bash "${SCENARIOS_DIR}/scen_005_priv_escalation.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:05Z","process_exec":{"process":{"binary":"/sbin/capsh","arguments":"--print","pid":5105,"uid":10001,"pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}}}}
-EOF
-
-echo ""
-echo "[SCENARIO 6/8] Command & Control: Outbound Socket Connection (T1071)..."
-bash "${SCENARIOS_DIR}/scen_006_outbound_network.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:06Z","process_kprobe":{"function_name":"sys_enter_connect","process":{"binary":"/usr/bin/nc","pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}},"args":[{"int_arg":3},{"sock_arg":{"daddr":"1.1.1.1","dport":443,"proto":"TCP"}}]}}
-EOF
-
-echo ""
-echo "[SCENARIO 7/8] Impact: Cryptominer Process Execution (T1496)..."
-bash "${SCENARIOS_DIR}/scen_007_cryptominer_process.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:07Z","process_exec":{"process":{"binary":"/usr/local/bin/xmrig","arguments":"--donate-level 1","pid":5107,"uid":10001,"pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}}}}
-EOF
-
-echo ""
-echo "[SCENARIO 8/8] Lateral Movement: Internal Network Discovery Probe (T1210)..."
-bash "${SCENARIOS_DIR}/scen_008_network_discovery_lateral.sh" "${TARGET_POD}" "${NAMESPACE}"
-cat << 'EOF' >> "${RAW_TELEMETRY}"
-{"time":"2026-09-05T18:30:08Z","process_kprobe":{"function_name":"sys_enter_connect","process":{"binary":"/usr/bin/nc","pod":{"namespace":"threatguard","name":"threatguard-target-pod","container":{"name":"simulation-target"}}},"args":[{"int_arg":4},{"sock_arg":{"daddr":"10.96.0.1","dport":443,"proto":"TCP"}}]}}
-EOF
+# Scenario list comes from the catalog, the single source of truth.
+while IFS=$'\t' read -r scenario_id script; do
+    echo ""
+    echo "[${scenario_id}] ${script}"
+    started="$(now)"
+    bash "${SCENARIOS_DIR}/${script}" "${TARGET_POD}" "${NAMESPACE}"
+    rc=$?
+    ended="$(now)"
+    status="executed"
+    # 125 is the scenario helper's "prerequisite missing" code; 127 means the
+    # scenario script itself could not be run.
+    if [ "${rc}" -eq 125 ] || [ "${rc}" -eq 127 ]; then
+        status="blocked"
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\n' "${scenario_id}" "${status}" "${rc}" "${started}" "${ended}" >> "${RESULTS_FILE}"
+    echo "    -> recorded: status=${status} exit=${rc}"
+    sleep "${PAUSE_SECONDS}"
+done < <(python -c "
+import json
+for s in json.load(open('simulations/scenario_catalog.json'))['scenarios']:
+    print(s['id'] + '\t' + s['script'])
+" | tr -d '\r')
 
 echo ""
 echo "======================================================================"
-echo "[+] Processing Simulation Telemetry with ThreatGuard Engine..."
+echo "[+] Collecting sensor events and evaluating each scenario..."
 echo "======================================================================"
-
-python -c "
-import sys, json, os
-from cloudnative_threatguard.detection.engine import DetectionEngine
-from cloudnative_threatguard.correlation.kubernetes import correlate_incidents
-from cloudnative_threatguard.reporting.risk import RiskScoringEngine
-from cloudnative_threatguard.runtime.events import SecurityEvent
-
-engine = DetectionEngine(protected_namespace='${NAMESPACE}')
-raw_file = '${ARTIFACTS_RUNTIME}/tetragon-raw.json'
-detections = engine.ingest_file(raw_file)
-
-# Convert to normalized SecurityEvents
-security_events = [d.to_security_event() for d in detections]
-
-# Add admission denial event
-admission_event = SecurityEvent.from_admission_denial(
-    rule_id='RULE-K8S-009',
-    policy_name='k8sprivilegedcontainer',
-    resource_name='01-privileged-pod',
-    namespace='${NAMESPACE}',
-    violation_message='Privileged container execution is prohibited in cluster'
-)
-security_events.insert(0, admission_event)
-
-# Write runtime events
-out_file = '${ARTIFACTS_RUNTIME}/runtime-events.json'
-with open(out_file, 'w', encoding='utf-8') as f:
-    json.dump([e.to_dict() for e in security_events], f, indent=2)
-
-# Correlate incidents
-incidents = correlate_incidents(security_events)
-incident_file = '${ARTIFACTS_RUNTIME}/incident-reports.json'
-with open(incident_file, 'w', encoding='utf-8') as f:
-    json.dump([i.to_dict() for i in incidents], f, indent=2)
-
-# Compute Risk Assessment
-risk_engine = RiskScoringEngine()
-risk_assessment = risk_engine.evaluate_workload(
-    security_events,
-    workload_ref='${NAMESPACE}/${TARGET_POD}',
-    workload_spec={'runAsUser': 0, 'privileged': False}
-)
-risk_file = '${ARTIFACTS_RUNTIME}/risk-assessment.json'
-with open(risk_file, 'w', encoding='utf-8') as f:
-    json.dump(risk_assessment.to_dict(), f, indent=2)
-
-summary = engine.get_summary()
-print(f'Total Telemetry Events Ingested: {summary[\"total_events_processed\"] + 1}')
-print(f'Total Security Detections: {len(security_events)}')
-print(f'Multi-Event Correlated Incidents: {len(incidents)}')
-print(f'Composite Workload Risk Score: {risk_assessment.composite_risk_score}/100 ({risk_assessment.risk_tier})')
-print('\nTop Risk Contributors:')
-for c in risk_assessment.top_risk_contributors:
-    print(f'  [+{c.impact_points:.1f} pts] {c.factor_name}: {c.description}')
-"
-
-echo ""
-echo "[+] Attack simulation completed successfully."
-echo "[+] Detections saved to: ${ARTIFACTS_RUNTIME}/runtime-events.json"
-echo "[+] Incidents saved to:  ${ARTIFACTS_RUNTIME}/incident-reports.json"
-echo "[+] Risk scoring saved to: ${ARTIFACTS_RUNTIME}/risk-assessment.json"
+python -m cloudnative_threatguard.runtime.pipeline --mode live \
+    --run-id "${THREATGUARD_RUN_ID}" --namespace "${NAMESPACE}" --pod "${TARGET_POD}" \
+    --results "${RESULTS_FILE}" --since "${SINCE}" \
+    --wait "${SENSOR_WAIT_SECONDS:-45}"
+exit $?

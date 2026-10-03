@@ -50,8 +50,17 @@ class CollectionResult:
     dropped_other_pods: int = 0
     errors: list[str] = field(default_factory=list)
 
+    @property
+    def event_kinds(self) -> dict[str, int]:
+        kinds: dict[str, int] = {}
+        for event in self.events:
+            kind = event_kind(event)
+            kinds[kind] = kinds.get(kind, 0) + 1
+        return kinds
+
     def to_dict(self) -> dict[str, Any]:
         return {
+            "event_kinds": self.event_kinds,
             "status": self.status,
             "events_captured": len(self.events),
             "parse_errors": self.parse_errors,

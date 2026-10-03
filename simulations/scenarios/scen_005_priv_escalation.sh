@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# SCEN-005: Container Privilege Escalation Indicator
-# Expected Detection: RUNTIME-005
-# MITRE ATT&CK: T1068 (Exploitation for Privilege Escalation)
-# Severity: CRITICAL
+# SCEN-005: Privilege Escalation Tooling
+# Expected Detection: RUNTIME-005 (T1068)
+# Runs nsenter's help output only; no namespace is entered.
 
-set -euo pipefail
-export MSYS_NO_PATHCONV=1
+set -uo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/_common.sh"
 
-TARGET_POD="${1:-threatguard-target-pod}"
-NAMESPACE="${2:-threatguard}"
-
-echo "[SCEN-005] Simulating privilege escalation indicator (capsh / nsenter / unshare) inside ${TARGET_POD}..."
-if command -v kubectl >/dev/null 2>&1 && kubectl get pod "${TARGET_POD}" -n "${NAMESPACE}" >/dev/null 2>&1; then
-    kubectl exec -n "${NAMESPACE}" "${TARGET_POD}" -- /bin/sh -c "which capsh >/dev/null 2>&1 && capsh --print || nsenter --help 2>/dev/null || true"
-else
-    echo "[SCEN-005] Offline/local mode: executing simulated privilege escalation marker"
-fi
+echo "[SCEN-005] Executing nsenter --help inside ${TARGET_POD}..."
+require_target
+step /usr/bin/nsenter --help
+finish

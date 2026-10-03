@@ -46,7 +46,10 @@ EXIT_FAILED = 1
 EXIT_BLOCKED = 2
 
 FIXTURE_PATH = settings.PROJECT_ROOT / "simulations" / "fixtures" / "demo_trace.jsonl"
-WINDOW_GRACE = timedelta(seconds=5)
+# Tolerance for clock skew between the host and the cluster node. It must stay
+# smaller than half the orchestrator's pause between scenarios, or neighbouring
+# scenarios would claim each other's events.
+WINDOW_GRACE = timedelta(seconds=1.5)
 
 # Effective security context for demo runs. It describes the simulated target
 # coherently (non-root, hardened) instead of assuming root privileges.
@@ -204,7 +207,7 @@ def run_pipeline(
     fixture_path: Path = FIXTURE_PATH,
     out_dir: Path | None = None,
     since: str = "",
-    wait_seconds: int = 20,
+    wait_seconds: int = 45,
     runner: tg_collector.Runner = tg_collector.kubectl_runner,
     sleep: Callable[[float], None] = time.sleep,
     workload_spec: dict[str, Any] | None = None,
@@ -238,6 +241,20 @@ def run_pipeline(
                 break
             events = collection.events
             outcomes, detections = _evaluate_all(mode, catalog, runs, events, namespace)
+
+    if mode == "live" and collection is not None and collection.status != "unavailable" and collection.events:
+        # A missing event class is a sensor deployment problem, not a detection miss.
+        if not collection.event_kinds.get("process_kprobe"):
+            hint = (
+                "the sensor stream contains no process_kprobe events: kprobe-based policies "
+                "(shell block, file open, connect) are not exporting events in this deployment; "
+                "check the Tetragon export allow/deny lists and host procfs access"
+            )
+            for outcome in outcomes:
+                if outcome.status == "failed" and any(
+                    "not observed" in r or "kill evidence" in r for r in outcome.reasons
+                ):
+                    outcome.reasons.append(hint)
 
     if mode == "live" and collection is not None and collection.status == "unavailable":
         # Without a working event stream nothing can be confirmed either way.
@@ -317,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pod", default="threatguard-target-pod")
     parser.add_argument("--results", type=Path, default=None, help="Orchestrator scenario results (live mode)")
     parser.add_argument("--since", default="", help="RFC 3339 start of the capture window (live mode)")
-    parser.add_argument("--wait", type=int, default=20, help="Seconds to wait for late sensor events")
+    parser.add_argument("--wait", type=int, default=45, help="Seconds to wait for late sensor events")
     args = parser.parse_args(argv)
 
     spec = _fetch_workload_spec(args.namespace, args.pod, tg_collector.kubectl_runner) if args.mode == "live" else None
