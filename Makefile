@@ -8,7 +8,7 @@ SHELL := /bin/bash
 
 .PHONY: help install test test-admission lint format typecheck validate \
         build cluster-up cluster-down install-security deploy simulate \
-        evidence security-test security-test-demo network-test dashboard demo-cloud verify verify-live clean
+        evidence security-test security-test-demo network-test sensor-diagnose dashboard demo-cloud verify verify-live clean
 
 help: ## Display this help message
 	@echo "======================================================================"
@@ -82,6 +82,9 @@ verify: ## Local platform verification (static and in-process checks)
 
 network-test: ## Verify NetworkPolicy enforcement (BLOCKED if the CNI does not enforce policies)
 	@bash scripts/test-network-policy.sh
+
+sensor-diagnose: ## Check whether events the sensor posts reach the export stream
+	@python -m cloudnative_threatguard.runtime.sensor_check
 
 verify-live: ## Verify the running cluster, deployed service and Prometheus
 	@threatguard verify --live

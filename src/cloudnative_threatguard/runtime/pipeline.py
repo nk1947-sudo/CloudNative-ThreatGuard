@@ -248,7 +248,7 @@ def run_pipeline(
             hint = (
                 "the sensor stream contains no process_kprobe events: kprobe-based policies "
                 "(shell block, file open, connect) are not exporting events in this deployment; "
-                "check the Tetragon export allow/deny lists and host procfs access"
+                "run `make sensor-diagnose` to compare the sensor's counters with the export stream"
             )
             for outcome in outcomes:
                 if outcome.status == "failed" and any(
