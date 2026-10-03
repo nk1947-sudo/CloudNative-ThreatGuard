@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -49,9 +50,13 @@ Runner = Callable[[list[str], str | None], tuple[int, str]]
 
 
 def kubectl(args: list[str], stdin: str | None = None) -> tuple[int, str]:
+    # THREATGUARD_KUBE_CONTEXT targets a specific cluster without changing the
+    # user's current kubectl context.
+    context = os.environ.get("THREATGUARD_KUBE_CONTEXT")
+    base = ["kubectl", *(["--context", context] if context else [])]
     try:
         proc = subprocess.run(
-            ["kubectl", *args], input=stdin, capture_output=True, text=True, timeout=120, check=False
+            [*base, *args], input=stdin, capture_output=True, text=True, timeout=120, check=False
         )
     except FileNotFoundError:
         return 127, "kubectl not found"
@@ -210,7 +215,10 @@ class NetworkChecker:
         if results:
             return results
 
-        code, out = self.run(["get", "pods", "-n", APP_NAMESPACE, "-l", f"app={APP_LABEL}",
+        # The probe pods also carry app=threatguard-app (so the policy selects them);
+        # exclude them so the destination is a real application pod with a listener.
+        code, out = self.run(["get", "pods", "-n", APP_NAMESPACE, "-l",
+                              f"app={APP_LABEL},security.threatguard.io/purpose!=netpol-test",
                               "-o", "jsonpath={.items[*].status.podIP}"], None)
         app_ips = [ip for ip in out.split() if ip] if code == 0 else []
         if not app_ips:

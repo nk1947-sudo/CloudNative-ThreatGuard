@@ -1,6 +1,14 @@
 # CloudNative ThreatGuard — Network Security & Micro-segmentation
 
-> **Verification status: UNVERIFIED on the default KIND cluster.** A NetworkPolicy only filters traffic if the cluster's CNI enforces it. `make network-test` first runs a canary (traffic must flow, then be refused after a deny-all policy). On the tested cluster (`kindnetd v20240202`) traffic still flowed after the deny-all policy, so the check reported BLOCKED and the allow/deny matrix was not run. The behaviour described below is the policy's *intent*. Install a policy-enforcing CNI (for example Calico or Cilium) and re-run `make network-test` before relying on it.
+> **Verification status.** A NetworkPolicy only filters traffic if the cluster's CNI enforces it, so `make network-test` first runs a canary and then a six-case allow/deny matrix.
+>
+> | CNI | Result |
+> |---|---|
+> | Calico v3.28.2 (`CNI=calico`) | **6/6 cases match**, including blocking pod-to-API-server traffic |
+> | kindnet `v20250512` (upgraded in place, see `deploy/kubernetes/kindnet-netpol.yaml`) | **5/6**: pod-to-pod and internet egress are denied and DNS is allowed, but a pod can still reach the node's own address (API server `:6443`, kubelet `:10250`) |
+> | kindnet `v20240202` (KIND 0.24 default) | **Not enforced**: the canary deny-all policy had no effect, so the matrix is BLOCKED |
+>
+> The claim below that the policy mitigates lateral movement to the Kubernetes API server therefore holds on Calico, not on KIND's kindnet. Use `CNI=calico bash scripts/setup-cluster.sh` (a new cluster) for full enforcement.
 
 This document details the network security architecture, traffic isolation boundaries, and least-privilege egress policies implemented by CloudNative ThreatGuard.
 

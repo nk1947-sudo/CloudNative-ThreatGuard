@@ -10,7 +10,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common.sh"
 
-CLUSTER_NAME="threatguard-cluster"
+# Cluster name and CNI can be overridden, for example to try Calico without
+# touching an existing cluster:
+#   CNI=calico CLUSTER_NAME=tg-calico-test bash scripts/setup-cluster.sh
+CLUSTER_NAME="${CLUSTER_NAME:-threatguard-cluster}"
+CNI="${CNI:-kindnet}"
+CALICO_VERSION="${CALICO_VERSION:-v3.28.2}"
 
 log_step "Checking local prerequisites..."
 
@@ -80,9 +85,26 @@ fi
 if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     log_info "KIND cluster '${CLUSTER_NAME}' already exists."
 else
-    log_info "Creating KIND cluster '${CLUSTER_NAME}' with eBPF mount support..."
-    kind create cluster --name "${CLUSTER_NAME}" --config "${SCRIPT_DIR}/kind-config.yaml"
+    case "${CNI}" in
+        kindnet) KIND_CONFIG="${SCRIPT_DIR}/kind-config.yaml" ;;
+        calico) KIND_CONFIG="${SCRIPT_DIR}/kind-config-calico.yaml" ;;
+        *)
+            log_error "Unknown CNI '${CNI}' (use kindnet or calico)."
+            exit 1
+            ;;
+    esac
+    log_info "Creating KIND cluster '${CLUSTER_NAME}' (CNI: ${CNI}) with eBPF mount support..."
+    kind create cluster --name "${CLUSTER_NAME}" --config "${KIND_CONFIG}"
     log_success "KIND cluster '${CLUSTER_NAME}' created successfully."
+
+    if [ "${CNI}" = "calico" ]; then
+        log_info "Installing Calico ${CALICO_VERSION}..."
+        kubectl --context "kind-${CLUSTER_NAME}" apply -f "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/calico.yaml"
+        if ! kubectl --context "kind-${CLUSTER_NAME}" rollout status ds/calico-node -n kube-system --timeout=240s; then
+            log_error "Calico did not become ready."
+            exit 1
+        fi
+    fi
 fi
 
 kubectl cluster-info --context "kind-${CLUSTER_NAME}"

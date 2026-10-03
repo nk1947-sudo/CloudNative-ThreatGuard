@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/common.sh"
 
-CLUSTER_NAME="threatguard-cluster"
+CLUSTER_NAME="${CLUSTER_NAME:-threatguard-cluster}"
 
 if ! command -v kind >/dev/null 2>&1; then
     log_error "KIND is not installed or not in PATH; nothing to tear down."

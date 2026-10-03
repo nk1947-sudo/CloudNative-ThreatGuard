@@ -28,9 +28,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `make network-test`: NetworkPolicy enforcement canary and connectivity matrix.
 - Execve kprobe events are evaluated by the shell rule (RUNTIME-001).
 
+### Network isolation and sensor diagnostics (follow-up)
+- `deploy/kubernetes/kindnet-netpol.yaml` and a newer kindnet image make KIND enforce NetworkPolicy in place. On the tested cluster this passes 5 of 6 network-test cases; pod-to-node-address traffic (API server, kubelet) is still reachable.
+- `CNI=calico bash scripts/setup-cluster.sh` creates a KIND cluster with Calico (`scripts/kind-config-calico.yaml`). Validated on a throwaway cluster: all 6 network-test cases pass, including blocking pod-to-API-server traffic.
+- `make sensor-diagnose` compares the Tetragon sensor's policy counters with the export stream so a posted-but-not-exported gap is reported as such.
+- Fixed the network check selecting its own probe pod as the application destination; `THREATGUARD_KUBE_CONTEXT` targets a specific cluster without changing the current context.
+
 ### Known limitations
-- On KIND with Docker Desktop, Tetragon exported only `process_exec` events in testing; kprobe-based scenarios (shell block, file open, connect) are reported failed with a diagnosis, not detected.
-- The default KIND CNI did not enforce NetworkPolicy; isolation is unverified (see `docs/security/network-security.md`).
+- On KIND with Docker Desktop, Tetragon posts kprobe events but they are not exported (see `make sensor-diagnose` and `docs/operations/deployment-runbook.md`); SCEN-001, 004, 006 and 008 are reported failed with a diagnosis, not detected. Needs a Linux host or VM.
+- KIND's default CNI does not enforce NetworkPolicy; the upgraded kindnet leaves node-destined traffic reachable. Use Calico for full enforcement.
 
 ## [Unreleased] -- Repository restructure (2026-09-05/07)
 
