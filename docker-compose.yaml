@@ -3,7 +3,7 @@ services:
     image: python:3.12-slim
     container_name: threatguard-exporter
     working_dir: /workspace
-    command: sh -c "pip install --no-cache-dir -e . -q && python -m cloudnative_threatguard.observability.metrics_exporter"
+    command: sh -c "pip install --no-cache-dir --target /tmp/threatguard-deps 'pydantic>=2.0,<3.0' 'PyYAML>=6.0' -q && PYTHONPATH=/tmp/threatguard-deps:/workspace/src python -m cloudnative_threatguard.observability.metrics_exporter"
     user: "10001:10001"
     ports:
       - "127.0.0.1:9100:9100"
