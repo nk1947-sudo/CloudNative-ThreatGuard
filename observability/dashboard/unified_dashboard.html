@@ -89,6 +89,15 @@
             border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
+        .demo-banner {
+            padding: 0.7rem 2rem;
+            background: #3b2c10;
+            color: #fcd58d;
+            border-bottom: 1px solid #9a670d;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
         .status-dot {
             width: 8px;
             height: 8px;
@@ -305,6 +314,8 @@
             background: #0D1117;
             border-radius: 8px;
             padding: 1.5rem;
+            display: flex;
+            justify-content: center;
             overflow-x: auto;
             border: 1px solid var(--border-color);
         }
@@ -338,13 +349,15 @@
     </div>
     <div class="status-indicators">
         <div>EKS: <strong style="color:var(--text-primary)">threatguard-cluster</strong></div>
-        <div>AWS Account: <strong style="color:var(--text-primary)">123456789012</strong></div>
+        <div>Demo AWS Account: <strong style="color:var(--text-primary)">123456789012</strong></div>
         <div class="status-pill">
             <div class="status-dot"></div>
-            <span>PLATFORM VERIFIED (12/12)</span>
+            <span>STATIC SAMPLE DATA</span>
         </div>
     </div>
 </header>
+
+<div class="demo-banner">ILLUSTRATIVE CONSOLE — Fixed example findings and metrics. See Grafana and the evidence report for validated local results.</div>
 
 <nav class="nav-container">
     <div class="nav-tab active" onclick="switchTab('overview')">Overview</div>
@@ -476,7 +489,7 @@
                         Multi-hop traversal spanning Cloud IAM (Purple: CloudGraphGuard) and Kubernetes Workloads (Cyan/Dark: ThreatGuard)
                     </div>
                 </div>
-                <button style="background:var(--accent-cyan);color:#000;border:none;padding:0.5rem 1rem;border-radius:6px;font-weight:600;cursor:pointer">
+                <button onclick="exportMermaid()" style="background:var(--accent-cyan);color:#000;border:none;padding:0.5rem 1rem;border-radius:6px;font-weight:600;cursor:pointer">
                     Export Mermaid
                 </button>
             </div>
@@ -484,30 +497,25 @@
             <div class="graph-container">
                 <pre class="mermaid">
 flowchart TD
-    IAM_USER["developer<br/>[CGG: IAM_USER]"]
-    IAM_ROLE["eks_deployer_role<br/>[CGG: IAM_ROLE]"]
-    EKS_CLUSTER["threatguard_cluster<br/>[CGG: EKS_CLUSTER]"]
-    K8S_SA["threatguard_workload_sa<br/>[TG: K8S_SERVICE_ACCOUNT]"]
-    K8S_POD["threatguard_target_pod<br/>[TG: K8S_POD]"]
-    RUNTIME_EVENT["execve /bin/bash<br/>[TG: RUNTIME_DETECTION]"]
-    SECRET["serviceaccount/token<br/>[TG: SECRET]"]
-    TARGET_S3["prod_customer_data<br/>[CGG: S3]"]
+    IAM_USER["developer IAM user"]
+    IAM_ROLE["EKS deployer role"]
+    K8S_SA["workload service account"]
+    K8S_POD["target pod"]
+    RUNTIME_EVENT["shell execution"]
+    SECRET["service account token"]
 
-    IAM_USER -->|ASSUME_ROLE (PassRole)| IAM_ROLE
-    IAM_ROLE -->|EKS_ACCESS (AccessEntry)| EKS_CLUSTER
-    EKS_CLUSTER -->|MAPPED_TO| K8S_SA
-    K8S_SA -->|RUNS| K8S_POD
-    K8S_POD -->|EXECUTED| RUNTIME_EVENT
-    RUNTIME_EVENT -->|ACCESSED| SECRET
-    SECRET -.->|EXFILTRATE_TO| TARGET_S3
+    IAM_USER -->|PassRole| IAM_ROLE
+    IAM_ROLE -->|EKS AccessEntry| K8S_SA
+    K8S_SA -->|runs| K8S_POD
+    K8S_POD -->|executes| RUNTIME_EVENT
+    RUNTIME_EVENT -->|accesses| SECRET
 
-    classDef cggStyle fill:#4A154B,stroke:#9B51E0,stroke-width:2px,color:#FFFFFF;
-    classDef tgStyle fill:#1E293B,stroke:#06B6D4,stroke-width:2px,color:#FFFFFF;
-    classDef alertStyle fill:#7F1D1D,stroke:#EF4444,stroke-width:2px,color:#FFFFFF;
-
-    class IAM_USER,IAM_ROLE,EKS_CLUSTER,TARGET_S3 cggStyle;
-    class K8S_SA,K8S_POD tgStyle;
-    class RUNTIME_EVENT,SECRET alertStyle;
+    classDef cloud fill:#4A154B,stroke:#9B51E0,color:#FFFFFF
+    classDef workload fill:#1E293B,stroke:#06B6D4,color:#FFFFFF
+    classDef alert fill:#7F1D1D,stroke:#EF4444,color:#FFFFFF
+    class IAM_USER,IAM_ROLE cloud
+    class K8S_SA,K8S_POD workload
+    class RUNTIME_EVENT,SECRET alert
                 </pre>
             </div>
         </div>
@@ -800,7 +808,18 @@ threatguard_detection_rate 100.0
 </main>
 
 <script>
-    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    const attackGraphSource = document.querySelector('#attack-paths .mermaid').textContent;
+
+    function exportMermaid() {
+        const blob = new Blob([attackGraphSource], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'threatguard_demo_attack_path.mmd';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
 
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -809,6 +828,9 @@ threatguard_detection_rate 100.0
         const targetContent = document.getElementById(tabId);
         if (targetContent) {
             targetContent.classList.add('active');
+            if (tabId === 'attack-paths') {
+                mermaid.run({ querySelector: '#attack-paths .mermaid' });
+            }
         }
 
         const tabs = document.querySelectorAll('.nav-tab');

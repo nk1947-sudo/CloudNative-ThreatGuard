@@ -1,6 +1,6 @@
 {
   "project": "CloudNative ThreatGuard",
-  "timestamp": "2026-09-05T22:56:18.620597+00:00",
+  "timestamp": "2026-09-30T14:48:40.949802+00:00",
   "overall_status": "PASS",
   "admission": {
     "total": 8,
@@ -9,8 +9,8 @@
     "enforcement_rate": 100.0
   },
   "runtime": {
-    "total_scenarios": 6,
-    "detected": 6,
+    "total_scenarios": 7,
+    "detected": 7,
     "missed": 0,
     "detection_rate": 100.0,
     "detected_rules": [
@@ -19,16 +19,17 @@
       "RUNTIME-003",
       "RUNTIME-004",
       "RUNTIME-005",
-      "RUNTIME-006"
+      "RUNTIME-006",
+      "RUNTIME-007"
     ],
     "detections_by_severity": {
-      "CRITICAL": 3,
-      "HIGH": 2,
+      "CRITICAL": 4,
+      "HIGH": 3,
       "MEDIUM": 1
     }
   },
   "telemetry": {
-    "total_runtime_events": 6,
+    "total_runtime_events": 8,
     "evidence_location": "artifacts/"
   }
 }

@@ -2,6 +2,7 @@
   "annotations": {
     "list": []
   },
+  "description": "Admission values come from local Gatekeeper webhook tests. Runtime values come from deterministic simulation traces. Cloud identity values come from the offline CloudGraphGuard demo; no AWS account is queried.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -89,7 +90,7 @@
           "refId": "A"
         }
       ],
-      "title": "eBPF Runtime Detection Rate",
+      "title": "Demo Trace Detection Rate",
       "type": "gauge"
     },
     {
@@ -153,14 +154,14 @@
           "refId": "A"
         }
       ],
-      "title": "Active Critical Runtime Alerts",
+      "title": "Critical Demo Trace Events",
       "type": "stat"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
       "id": 101,
-      "title": "eBPF Runtime Behavioral Detections & MITRE ATT&CK",
+      "title": "Deterministic Runtime Trace Analysis & MITRE ATT&CK",
       "type": "row"
     },
     {
@@ -190,7 +191,7 @@
           "refId": "A"
         }
       ],
-      "title": "Detections Breakdown by Severity",
+      "title": "Demo Trace by Severity",
       "type": "piechart"
     },
     {
@@ -235,18 +236,20 @@
       "targets": [
         {
           "expr": "sum by (rule_id, technique) (threatguard_runtime_detections_total)",
+          "instant": true,
+          "range": false,
           "legendFormat": "{{rule_id}} [{{technique}}]",
           "refId": "A"
         }
       ],
-      "title": "Detections by Rule ID & MITRE ATT&CK Technique",
+      "title": "Demo Trace by Rule ID & MITRE ATT&CK Technique",
       "type": "barchart"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
       "id": 200,
-      "title": "Cloud Security & Identity Posture (CloudGraphGuard Integration)",
+      "title": "Simulated Cloud Security & Identity Posture",
       "type": "row"
     },
     {
